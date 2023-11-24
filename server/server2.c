@@ -5,6 +5,10 @@
 
 #include "server2.h"
 #include "client2.h"
+#include "user.h"
+
+user_t users[30];
+int nb_users = 0;
 
 static void init(void)
 {
@@ -86,15 +90,34 @@ static void app(void)
             continue;
          }
 
+
+
          /* what is the new maximum fd ? */
          max = csock > max ? csock : max;
 
          FD_SET(csock, &rdfs);
 
          Client c = { csock };
-         strncpy(c.name, buffer, BUF_SIZE - 1);
+         //regarder si user name existe
+         int id;
+         for(id = 0; id < nb_users ; ++id){
+            if(!strncmp(buffer,users[id].name, USERNAME_LENGTH -1)){
+               break;
+            }
+         }
+         if(id == nb_users){
+            strncpy(users[id].name, buffer, USERNAME_LENGTH -1);
+            users[id].is_connected = 1;
+            users[id].is_playing = 0;
+            ++nb_users;
+
+         }
+         //strncpy(c.name, buffer, BUF_SIZE - 1);
+         c.user_id = id;
          clients[actual] = c;
          actual++;
+         write_client(csock, "game");
+
       }
       else
       {
@@ -111,7 +134,7 @@ static void app(void)
                {
                   closesocket(clients[i].sock);
                   remove_client(clients, i, &actual);
-                  strncpy(buffer, client.name, BUF_SIZE - 1);
+                  strncpy(buffer, users[client.user_id].name, BUF_SIZE - 1);
                   strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
                   send_message_to_all_clients(clients, client, actual, buffer, 1);
                }
@@ -158,7 +181,7 @@ static void send_message_to_all_clients(Client *clients, Client sender, int actu
       {
          if(from_server == 0)
          {
-            strncpy(message, sender.name, BUF_SIZE - 1);
+            strncpy(message, users[sender.user_id].name, BUF_SIZE - 1);
             strncat(message, " : ", sizeof message - strlen(message) - 1);
          }
          strncat(message, buffer, sizeof message - strlen(message) - 1);
@@ -215,6 +238,8 @@ static int read_client(SOCKET sock, char *buffer)
 
    buffer[n] = 0;
 
+   printf("someone says : \"%s\"\n", buffer);
+
    return n;
 }
 
@@ -225,6 +250,8 @@ static void write_client(SOCKET sock, const char *buffer)
       perror("send()");
       exit(errno);
    }
+
+   printf("I say : \"%s\"\n", buffer);
 }
 
 int main(int argc, char **argv)

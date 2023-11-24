@@ -154,6 +154,8 @@ static int read_server(SOCKET sock, char *buffer)
 
    buffer[n] = 0;
 
+   printf("server says : \"%s\"\n", buffer);
+
    return n;
 }
 
@@ -164,15 +166,24 @@ static void write_server(SOCKET sock, const char *buffer)
       perror("send()");
       exit(errno);
    }
+
+   printf("I say : \"%s\"\n", buffer);
 }
 
-static void play_game(SOCKET sock, const char *buffer)
+static void play_game(SOCKET sock, char *buffer)
 {
    awale_running_game_t game;
    write_server(sock, "game state");
 
    read_server(sock, buffer);
+   printf("%s\n", buffer); 
+   if(buffer[0] == '0') {
+      printf("Je suis le joueur 0");
+   } else if(buffer[0] == '1'){
+      printf("Je suis le joueur 1");
+   }
    //TODO store received game in variable
+
 
    
 }

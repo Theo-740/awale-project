@@ -12,7 +12,8 @@ typedef struct awale_running_game_t
 {
     awale_board_t board;
     int scores[2];
-    int turn;
+    int id; // my id in the game (am i the zero or first player ?)
+    int nbTurns;
     username_t opponent;
     /**
      * -1 if game still running
