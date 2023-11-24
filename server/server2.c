@@ -111,6 +111,12 @@ static void app(void)
             users[id].is_playing = 0;
             ++nb_users;
 
+         } else {
+            if(users[id].is_connected == 1) {
+               write_client(csock, "no");
+               exit(1);
+            }
+            users[id].is_connected = 1;
          }
          //strncpy(c.name, buffer, BUF_SIZE - 1);
          c.user_id = id;

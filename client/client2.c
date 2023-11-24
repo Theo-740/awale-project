@@ -41,7 +41,7 @@ static void app(const char *address, const char *name)
 
    if (!strcmp(buffer, "no"))
    {
-      printf("user is already connected");
+      printf("user is already connected\n");
       exit(1);
    }
    else if (!strcmp(buffer, "game"))
@@ -50,7 +50,7 @@ static void app(const char *address, const char *name)
    }
    else if (strcmp(buffer, "menu"))
    {
-      printf("error malformed response from server");
+      printf("error malformed response from server\n");
       exit(1);
    }
 
@@ -178,9 +178,9 @@ static void play_game(SOCKET sock, char *buffer)
    read_server(sock, buffer);
    printf("%s\n", buffer); 
    if(buffer[0] == '0') {
-      printf("Je suis le joueur 0");
+      printf("Je suis le joueur 0\n");
    } else if(buffer[0] == '1'){
-      printf("Je suis le joueur 1");
+      printf("Je suis le joueur 1\n");
    }
    //TODO store received game in variable
 
