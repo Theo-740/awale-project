@@ -122,7 +122,11 @@ static void app(void)
          c.user_id = id;
          clients[actual] = c;
          actual++;
-         write_client(csock, "game");
+         if(users[id].is_playing == 1) {
+            write_client(csock, "game");
+         } else {
+            write_client(csock, "menu");
+         }
 
       }
       else
