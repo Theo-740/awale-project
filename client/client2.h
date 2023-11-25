@@ -5,7 +5,8 @@
 
 #include <winsock2.h>
 
-#elif defined (linux)
+//#elif defined (linux)
+#else
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -21,9 +22,9 @@ typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 
-#else
+//#else
 
-#error not defined for this platform
+//#error not defined for this platform
 
 #endif
 
@@ -32,13 +33,12 @@ typedef struct in_addr IN_ADDR;
 
 #define BUF_SIZE 1024
 
-static void init(void);
-static void end(void);
-static void app(const char *address, const char *name);
-static int init_connection(const char *address);
-static void end_connection(int sock);
-static int read_server(SOCKET sock, char *buffer);
-static void write_server(SOCKET sock, const char *buffer);
-static void play_game(SOCKET sock, char *buffer);
+void init(void);
+void end(void);
+void app(const char *address, const char *name);
+int init_connection(const char *address);
+void end_connection(int sock);
+int read_server(SOCKET sock, char *buffer);
+void write_server(SOCKET sock, const char *buffer);
 
 #endif /* guard */

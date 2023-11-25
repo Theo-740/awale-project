@@ -1,0 +1,44 @@
+EXE_NAME = $(notdir $(addsuffix .exe,$(CURDIR)))
+EXE_DIR = ..
+EXE = $(EXE_DIR)/$(EXE_NAME)
+
+CC = gcc
+FLAGS = -Wall
+DEBUG_FLAGS = -g -DMAP
+DEP_FLAGS = -MT $@ -MMD -MP -MF build/deps/$*.d
+
+SRC = $(wildcard *.c)
+OBJ = $(SRC:%.c=build/obj/%.o)
+
+ifneq (,$(filter debug, $(MAKECMDGOALS)))
+	FLAGS := $(FLAGS) $(DEBUG_FLAGS)
+endif
+
+default: $(EXE)
+
+DEP_FILES := $(SRC:%.c=build/deps/%.d)
+$(DEP_FILES):
+include $(wildcard $(DEP_FILES))
+
+build/obj/%.o : %.c | build/obj
+build/obj/%.o : %.c build/deps/%.d | build/deps build/obj
+	$(CC) -c -o $@ $(DEP_FLAGS) $(CFLAGS) $<
+
+$(EXE) : $(OBJ)
+	$(CC) -o $@ $(OBJ) $(LFLAGS)
+
+build :
+	mkdir $@
+
+build/deps build/obj: | build
+	mkdir $@
+
+clean : $(EXE)
+	rm -rf build
+
+clear :
+	rm -rf build $(EXE)
+
+remake : clear default
+
+debug : clear default

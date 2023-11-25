@@ -1,6 +1,8 @@
 #include "awale.h"
 
-int awale_move_is_valid(awale_running_game_t *game, int move)
+#include <stdio.h>
+
+int awale_move_is_valid(awale_game *game, int move)
 {
     // game already over
     if (game->winner != -1)
@@ -29,7 +31,7 @@ int awale_move_is_valid(awale_running_game_t *game, int move)
     return 0;
 }
 
-int awale_play_move(awale_running_game_t *game, int move)
+int awale_play_move(awale_game *game, int move)
 {
     int basicValidity = awale_move_is_valid(game, move);
     if (basicValidity < 0)
@@ -65,4 +67,33 @@ int awale_play_move(awale_running_game_t *game, int move)
     // check for end of the game
 
     return 0;
+}
+
+void awale_print_game(awale_game *game)
+{
+    printf("game:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
+           game->id,
+           game->turn,
+           game->board[0],
+           game->board[1],
+           game->board[2],
+           game->board[3],
+           game->board[4],
+           game->board[5],
+           game->board[6],
+           game->board[7],
+           game->board[8],
+           game->board[9],
+           game->board[10],
+           game->board[11],
+           game->scores[0],
+           game->scores[1]);
+    if (game->turn == game->id)
+    {
+        printf("it's your turn\n");
+    }
+    else
+    {
+        printf("it's your opponent's turn\n");
+    }
 }

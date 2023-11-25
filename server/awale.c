@@ -1,6 +1,6 @@
 #include "awale.h"
 
-void awale_init_game(awale_running_game_t *game)
+void awale_init_game(AwaleRunningGame *game)
 {
     for (int i = 0; i < AWALE_BOARD_SIZE; i++)
     {
@@ -12,7 +12,7 @@ void awale_init_game(awale_running_game_t *game)
     game->winner = -1;
 }
 
-int awale_move_is_valid(awale_running_game_t *game, int move)
+int awale_move_is_valid(AwaleRunningGame *game, int move)
 {
     // game already over
     if (game->winner != -1)
@@ -41,7 +41,7 @@ int awale_move_is_valid(awale_running_game_t *game, int move)
     return 0;
 }
 
-int awale_play_move(awale_running_game_t *game, int move)
+int awale_play_move(AwaleRunningGame *game, int move)
 {
     int basicValidity = awale_move_is_valid(game, move);
     if (basicValidity < 0)

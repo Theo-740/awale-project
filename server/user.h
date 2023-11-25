@@ -3,14 +3,14 @@
 
 #define USERNAME_LENGTH 16
 
-typedef char username_t[USERNAME_LENGTH];
+typedef char Username[USERNAME_LENGTH];
 
-typedef struct user_t
+typedef struct User
 {
-    username_t name;
+    Username name;
     int is_connected;
     int is_playing;
-} user_t;
+} User;
 
 
 #endif

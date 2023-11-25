@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/select.h>
 
 #include "client2.h"
 #include "awale.h"
+#include "controller.h"
 
-static void init(void)
+void init(void)
 {
 #ifdef WIN32
    WSADATA wsa;
@@ -19,17 +21,18 @@ static void init(void)
 #endif
 }
 
-static void end(void)
+void end(void)
 {
 #ifdef WIN32
    WSACleanup();
 #endif
 }
 
-static void app(const char *address, const char *name)
+void app(const char *address, const char *name)
 {
    SOCKET sock = init_connection(address);
    char buffer[BUF_SIZE];
+   Controller ctrl;
 
    fd_set rdfs;
 
@@ -39,16 +42,20 @@ static void app(const char *address, const char *name)
    /* read server response */
    read_server(sock, buffer);
 
-   if (!strcmp(buffer, "no"))
+   if (!strncmp(buffer, "nope", 4))
    {
       printf("user is already connected\n");
       exit(1);
    }
-   else if (!strcmp(buffer, "game"))
+   else if (!strncmp(buffer, "game", 4))
    {
-      play_game(sock, buffer);
+      controller_init(&ctrl, sock, buffer, GAME);
    }
-   else if (strcmp(buffer, "menu"))
+   else if (!strncmp(buffer, "menu", 4))
+   {
+      controller_init(&ctrl, sock, buffer, MAIN_MENU);
+   }
+   else
    {
       printf("error malformed response from server\n");
       exit(1);
@@ -87,7 +94,7 @@ static void app(const char *address, const char *name)
                buffer[BUF_SIZE - 1] = 0;
             }
          }
-         write_server(sock, buffer);
+         controller_user_input(&ctrl, sock, buffer);
       }
       else if (FD_ISSET(sock, &rdfs))
       {
@@ -98,14 +105,14 @@ static void app(const char *address, const char *name)
             printf("Server disconnected !\n");
             break;
          }
-         puts(buffer);
+         controller_server_input(&ctrl, sock, buffer);
       }
    }
 
    end_connection(sock);
 }
 
-static int init_connection(const char *address)
+int init_connection(const char *address)
 {
    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
    SOCKADDR_IN sin = {0};
@@ -137,12 +144,12 @@ static int init_connection(const char *address)
    return sock;
 }
 
-static void end_connection(int sock)
+void end_connection(int sock)
 {
    closesocket(sock);
 }
 
-static int read_server(SOCKET sock, char *buffer)
+int read_server(SOCKET sock, char *buffer)
 {
    int n = 0;
 
@@ -159,7 +166,7 @@ static int read_server(SOCKET sock, char *buffer)
    return n;
 }
 
-static void write_server(SOCKET sock, const char *buffer)
+void write_server(SOCKET sock, const char *buffer)
 {
    if (send(sock, buffer, strlen(buffer), 0) < 0)
    {
@@ -168,24 +175,6 @@ static void write_server(SOCKET sock, const char *buffer)
    }
 
    printf("I say : \"%s\"\n", buffer);
-}
-
-static void play_game(SOCKET sock, char *buffer)
-{
-   awale_running_game_t game;
-   write_server(sock, "game state");
-
-   read_server(sock, buffer);
-   printf("%s\n", buffer); 
-   if(buffer[0] == '0') {
-      printf("Je suis le joueur 0\n");
-   } else if(buffer[0] == '1'){
-      printf("Je suis le joueur 1\n");
-   }
-   //TODO store received game in variable
-
-
-   
 }
 
 int main(int argc, char **argv)

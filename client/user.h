@@ -3,6 +3,6 @@
 
 #define USERNAME_LENGTH 16
 
-typedef char username_t[USERNAME_LENGTH];
+typedef char Username[USERNAME_LENGTH];
 
 #endif
