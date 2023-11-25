@@ -31,7 +31,7 @@ int awale_move_is_valid(awale_running_game_t *game, int move)
 
 int awale_play_move(awale_running_game_t *game, int move)
 {
-    int basicValidity = moveBasicValidity(game, move);
+    int basicValidity = awale_move_is_valid(game, move);
     if (basicValidity < 0)
     {
         return basicValidity;
