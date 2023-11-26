@@ -38,6 +38,9 @@ static void app(void)
    User users[30];
    int nb_users = 0;
 
+   AwaleRunningGame awale_running[MAX_CLIENTS];
+   int nb_awale_running = 0;
+
    fd_set rdfs;
 
    while (1)
@@ -181,13 +184,25 @@ static void app(void)
                   {
                      token = strtok(NULL, "\n");                     
                      int opponent_id = find_user(users, nb_users, token);
+                     write_client(clients[find_client(clients, nb_clients, opponent_id)].sock,"game_accepted");
 
                      users[client.user_id].is_playing = 1;
                      users[opponent_id].is_playing = 1;
 
+                     // choose player one
                      ClientState statePlayer1 = (rand()>0.5)? WAITING_MOVE:PLAYING;
                      clients[i].state = statePlayer1;
                      clients[find_client(clients, nb_clients, opponent_id)].state = (statePlayer1 == WAITING_MOVE)? PLAYING:WAITING_MOVE;
+
+                     // create new awale running 
+                     awale_running[nb_awale_running].player0_id = (statePlayer1 == WAITING_MOVE)? opponent_id:i;
+                     awale_running[nb_awale_running].player1_id = (statePlayer1 == WAITING_MOVE)? i:opponent_id;
+                     ++nb_awale_running;
+                     printf("new awale created !\n");
+
+                     awale_init_game(&awale_running[nb_awale_running-1]);
+                     // TODO send message with info about the game (don't know what theo did/didn't do)
+
                   }
                   /*refused challenge*/
                   else if(!strcmp(token, "game_refused"))

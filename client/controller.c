@@ -316,9 +316,13 @@ void controller_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SI
         break;
 
     case CHALLENGED:
-        if(!strncmp(buffer,"game_refused",17)){
+        if(!strncmp(buffer,"game_refused",12)){
             printf("went to controller server input challenge refused\n");
             c->state = MAIN_MENU;
+        }
+        else if(!strncmp(buffer,"game_accepted",13)){
+            printf("went to controller server input challenge accepted\n");
+            c->state = GAME;
         }
         break;
 
