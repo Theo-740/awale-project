@@ -12,6 +12,7 @@ typedef enum ControllerState
     MAIN_MENU,
     GAME,
     USER_LIST,
+    CHALLENGED,
 } ControllerState;
 
 typedef struct Controller
@@ -20,10 +21,12 @@ typedef struct Controller
     awale_game game;
     int nb_users;
     Username user_list[MAX_USERS];
+    int nb_challenger;
+    Username challenger_list[MAX_USERS];
 } Controller;
 
 void controller_init(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE], ControllerState state);
-void controller_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
+void controller_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE], char server_info[BUF_SIZE]);
 void controller_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
 
 static void main_menu_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
@@ -37,5 +40,9 @@ static void game_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_S
 static void user_list_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
 static void user_list_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
 static void user_list_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
+
+static void new_challenge_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
+
+static void new_challenge_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE], char server_info[BUF_SIZE]);
 
 #endif

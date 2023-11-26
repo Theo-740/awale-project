@@ -34,7 +34,69 @@ static void main_menu_user_input(Controller *c, SOCKET serv_sock, char buffer[BU
 
 static void main_menu_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
 {
-    printf("I cannot read what the server sends me");
+    printf("I cannot read what the server sends me\n");
+}
+
+static void new_challenge_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
+{
+    char *token = strtok(buffer, ":");
+    if (!strcmp(token, "challenged"))
+    {
+        
+        c->state = CHALLENGED;
+        token = strtok(NULL, ",");
+        
+        printf("%s wants to challenge you !\n", token);
+        printf("1: accept the challenge\n");
+        printf("2: refuse the challenge\n");
+    }
+}
+
+static void new_challenge_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE], char server_info[BUF_SIZE])
+{
+    char *token = strtok(server_info, ":");
+    printf("server_info : %s\n", server_info);
+    if (!strncmp(server_info, "challenged",10))
+    {
+        token = strtok(NULL, ",");
+        int choice;
+        if (sscanf(buffer, "%d", &choice) == 1)
+        {
+            switch (choice)
+            {
+            case 1:
+            // user accept the challenge
+                c->state = GAME;
+                strncpy(buffer, "game_accepted:", BUF_SIZE-1);
+                strncat(buffer, token, BUF_SIZE -strlen(buffer)-1);
+                write_server(serv_sock, buffer);
+                break;
+
+            case 2:
+            // user refuse the challenge
+                c->state = MAIN_MENU;
+                printf("went to refuse %d\n", c->state);
+                strncpy(buffer, "game_refused:", BUF_SIZE-1);
+                strncat(buffer, token, BUF_SIZE -strlen(buffer)-1);
+                write_server(serv_sock, buffer);
+                break;
+
+            default:
+                printf("this number is not an option\n");
+                break;
+            }
+        }
+        else
+        {
+            printf("write a number please\n");
+        }
+    }else{
+        token = strtok(NULL, ",");
+        strncpy(buffer, "game_refused:", BUF_SIZE-1);
+        strncat(buffer, token, BUF_SIZE -strlen(buffer)-1);
+
+        write_server(serv_sock, buffer);
+    }
 }
 
 // game state
@@ -152,10 +214,12 @@ static void user_list_user_input(Controller *c, SOCKET serv_sock, char buffer[BU
     } else {
         int id;
         if(sscanf(buffer,"%d",&id) == 1 && id >= 0 && id < c->nb_users) {
-            printf("you challenged %s\n", c->user_list[id]);
             strncpy(buffer, "challenge:", BUF_SIZE-1);
             strncat(buffer, c->user_list[id], BUF_SIZE -strlen(buffer)-1);
             write_server(serv_sock, buffer);
+
+            c->state = CHALLENGED;
+            printf("you challenged %s. To undo this action enter anything\n", c->user_list[id]);
         } else {
             printf("please enter a valid number\n");
         }
@@ -200,7 +264,7 @@ void controller_init(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE], Con
     }
 }
 
-void controller_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
+void controller_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE], char server_info[BUF_SIZE])
 {
     switch (c->state)
     {
@@ -214,11 +278,17 @@ void controller_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE
 
     case USER_LIST:
         user_list_user_input(c, serv_sock, buffer);
+        break;
+
+    case CHALLENGED:
+        new_challenge_user_input(c, serv_sock, buffer, server_info);
+        break;
     }
 };
 
 void controller_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
 {
+    printf("state : %d\n", c->state);
     if(!strncmp(buffer, "chat:",5)){
         printf("%s\n",buffer);
         return;
@@ -226,15 +296,34 @@ void controller_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SI
     switch (c->state)
     {
     case MAIN_MENU:
+        printf("went to controller server input main menu\n");
+        if(!strncmp(buffer,"challenged:",11)){
+            new_challenge_server_input(c,serv_sock, buffer);
+        }
+        else{
         main_menu_server_input(c, serv_sock, buffer);
+        }
         break;
 
     case GAME:
+        printf("went to controller server input game\n");
         game_server_input(c, serv_sock, buffer);
         break;
 
     case USER_LIST:
+        printf("went to controller server input main user list\n");
         user_list_server_input(c, serv_sock, buffer);
+        break;
+
+    case CHALLENGED:
+        if(!strncmp(buffer,"game_refused",17)){
+            printf("went to controller server input challenge refused\n");
+            c->state = MAIN_MENU;
+        }
+        break;
+
+    default :
+        printf("went to controller server input default\n");
         break;
     }
 }
