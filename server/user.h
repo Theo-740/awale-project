@@ -10,6 +10,9 @@ typedef struct User
     Username name;
     int is_connected;
     int is_playing;
+    int is_challenged;
+    int is_challenging;
+    Username challenged;
 } User;
 
 

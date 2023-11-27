@@ -115,6 +115,18 @@ static void app(void)
                c->state = PLAYING;
                write_client(csock, "game");
             }
+            else if(users[user_id].is_challenging == 1)
+            {
+               strcpy(buffer, "challenge:");
+               strcat(buffer, users[user_id].challenged);
+               write_client(csock, buffer);
+            }
+            else if(users[user_id].is_challenged == 1)
+            {
+               strcpy(buffer, "challenge:");
+               strcat(buffer, users[user_id].challenged);
+               write_client(csock, buffer);
+            }
             else
             {
                c->state = MENU;
@@ -158,11 +170,11 @@ static void app(void)
                      send_user_list_to_client(client, clients, nb_clients, users);
                   }
                   /* challenge a user if didn't already asked someone */
-                  else if (!strcmp(token, "challenge") )
+                  else if (!strcmp(token, "challenge") && users[client.user_id].is_challenged != 1)
                   {
                      token = strtok(NULL, "\n");
                      int challenged_id = find_user(users, nb_users, token);
-                     if (challenged_id != -1 && users[challenged_id].is_connected && !users[challenged_id].is_playing && clients[find_client(clients, nb_clients, challenged_id)].state != WAITING_ANSWER && client.state != WAITING_ANSWER)
+                     if (challenged_id != -1 && users[challenged_id].is_connected && !users[challenged_id].is_playing && users[challenged_id].is_challenged != 1)
                      {
                         Client challenged = clients[find_client(clients, nb_clients, challenged_id)];
                         printf("challenged state : %d\n", challenged.state);
@@ -170,24 +182,32 @@ static void app(void)
                         strncat(buffer, users[client.user_id].name, BUF_SIZE - strlen(buffer) - 1);
                         write_client(challenged.sock, buffer);
                         // TODO améliorer ça après discution mais pour l'instant relation 1/1
-                        clients[find_client(clients, nb_clients, challenged_id)].state = WAITING_ANSWER;
-                        clients[i].state = WAITING_ANSWER;
+                        users[client.user_id].is_challenged = 1;
+                        users[client.user_id].is_challenging = 1;
+                        users[challenged_id].is_challenged = 1;
 
+
+                        strcpy(users[client.user_id].challenged, users[challenged_id].name);
+                        strcpy(users[client.user_id].challenged, users[client.user_id].name);
                      }
                      else
                      {
-                        write_client(client.sock, "challenge:fail");
+                        write_client(client.sock, "game_refused");
                      }
                   }
                   /* accept a challenge */
-                  else if(!strcmp(token, "game_accepted"))
+                  else if(users[client.user_id].is_challenged == 1 && !strcmp(token, "game_accepted"))
                   {
                      token = strtok(NULL, "\n");                     
-                     int opponent_id = find_user(users, nb_users, token);
+                     int opponent_id = find_user(users, nb_users, users[client.user_id].challenged);
                      write_client(clients[find_client(clients, nb_clients, opponent_id)].sock,"game_accepted");
 
                      users[client.user_id].is_playing = 1;
                      users[opponent_id].is_playing = 1;
+
+                     users[client.user_id].is_challenged = 0;
+                     users[client.user_id].is_challenging = 0;
+                     users[opponent_id].is_challenged = 0;
 
                      // choose player one
                      ClientState statePlayer1 = (rand()>0.5)? WAITING_MOVE:PLAYING;
@@ -205,13 +225,15 @@ static void app(void)
 
                   }
                   /*refused challenge*/
-                  else if(!strcmp(token, "game_refused"))
+                  else if(users[client.user_id].is_challenged == 1 && !strcmp(token, "game_refused") )
                   {
                      token = strtok(NULL, "\n");                     
                      int refused_id = find_user(users, nb_users, token);
 
-                     clients[i].state = MENU;
-                     clients[find_client(clients, nb_clients, refused_id)].state = MENU;
+                     users[client.user_id].is_challenged = 0;
+                     users[client.user_id].is_challenging = 0;
+                     users[refused_id].is_challenged = 0;
+
                      write_client(clients[find_client(clients, nb_clients, refused_id)].sock,"game_refused");
                   }
                }
