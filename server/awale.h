@@ -24,8 +24,8 @@ typedef struct AwaleRunningGame
     int scores[2];
     int nbTurns;
     int moves[100];
-    int player0_id;
-    int player1_id;
+    User* player0;
+    User* player1;
     /**
      * -1 if game still running
      * 0 or 1 to designate winner

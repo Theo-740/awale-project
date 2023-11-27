@@ -91,8 +91,8 @@ static void app(void)
             continue;
          }
 
-         int user_id = connect_user(users, &nb_users, buffer);
-         if (user_id < 0)
+         User *user = connect_user(users, &nb_users, buffer);
+         if (user == NULL)
          {
             write_client(csock, "nope");
             closesocket(csock);
@@ -108,23 +108,23 @@ static void app(void)
             Client *c = &clients[nb_clients];
             nb_clients++;
             c->sock = csock;
-            c->user_id = user_id;
+            c->user = user;
 
-            if (users[user_id].is_playing == 1)
+            if (c->user->is_playing == 1)
             {
                c->state = PLAYING;
                write_client(csock, "game");
             }
-            else if(users[user_id].is_challenging == 1)
+            else if (c->user->is_challenging == 1)
             {
                strcpy(buffer, "challenge:");
-               strcat(buffer, users[user_id].challenged);
+               strcat(buffer, c->user->challenged);
                write_client(csock, buffer);
             }
-            else if(users[user_id].is_challenged == 1)
+            else if (c->user->is_challenged == 1)
             {
                strcpy(buffer, "challenge:");
-               strcat(buffer, users[user_id].challenged);
+               strcat(buffer, c->user->challenged);
                write_client(csock, buffer);
             }
             else
@@ -132,7 +132,7 @@ static void app(void)
                c->state = MENU;
                write_client(csock, "menu");
             }
-            strncpy(buffer, users[user_id].name, BUF_SIZE - 1);
+            strncpy(buffer, c->user->name, BUF_SIZE - 1);
             strncat(buffer, " connected !", BUF_SIZE - strlen(buffer) - 1);
             send_message_to_all_clients(clients, *c, nb_clients, users, buffer, 1);
          }
@@ -152,10 +152,9 @@ static void app(void)
                {
                   closesocket(clients[i].sock);
                   remove_client(clients, i, &nb_clients, users);
-                  strncpy(buffer, users[client.user_id].name, BUF_SIZE - 1);
+                  strncpy(buffer, client.user->name, BUF_SIZE - 1);
                   strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
                   send_message_to_all_clients(clients, client, nb_clients, users, buffer, 1);
-                  
                }
                else
                {
@@ -170,25 +169,24 @@ static void app(void)
                      send_user_list_to_client(client, clients, nb_clients, users);
                   }
                   /* challenge a user if didn't already asked someone */
-                  else if (!strcmp(token, "challenge") && users[client.user_id].is_challenged != 1)
+                  else if (!strcmp(token, "challenge") && client.user->is_challenged != 1)
                   {
                      token = strtok(NULL, "\n");
-                     int challenged_id = find_user(users, nb_users, token);
-                     if (challenged_id != -1 && users[challenged_id].is_connected && !users[challenged_id].is_playing && users[challenged_id].is_challenged != 1)
+                     User *challenged_user = find_user(users, nb_users, token);
+                     if (challenged_user != NULL && challenged_user->is_connected && !challenged_user->is_playing && challenged_user->is_challenged != 1)
                      {
-                        Client challenged = clients[find_client(clients, nb_clients, challenged_id)];
-                        printf("challenged state : %d\n", challenged.state);
+                        Client *challenged_client = find_client(clients, nb_clients, challenged_user);
+                        printf("challenged state : %d\n", challenged_client->state);
                         strncpy(buffer, "challenged:", BUF_SIZE - 1);
-                        strncat(buffer, users[client.user_id].name, BUF_SIZE - strlen(buffer) - 1);
-                        write_client(challenged.sock, buffer);
+                        strncat(buffer, client.user->name, BUF_SIZE - strlen(buffer) - 1);
+                        write_client(challenged_client->sock, buffer);
                         // TODO améliorer ça après discution mais pour l'instant relation 1/1
-                        users[client.user_id].is_challenged = 1;
-                        users[client.user_id].is_challenging = 1;
-                        users[challenged_id].is_challenged = 1;
+                        client.user->is_challenged = 1;
+                        client.user->is_challenging = 1;
+                        challenged_user->is_challenged = 1;
 
-
-                        strcpy(users[client.user_id].challenged, users[challenged_id].name);
-                        strcpy(users[client.user_id].challenged, users[client.user_id].name);
+                        strcpy(client.user->challenged, challenged_user->name);
+                        strcpy(client.user->challenged, client.user->name);
                      }
                      else
                      {
@@ -196,45 +194,44 @@ static void app(void)
                      }
                   }
                   /* accept a challenge */
-                  else if(users[client.user_id].is_challenged == 1 && !strcmp(token, "game_accepted"))
+                  else if (client.user->is_challenged == 1 && !strcmp(token, "game_accepted"))
                   {
-                     token = strtok(NULL, "\n");                     
-                     int opponent_id = find_user(users, nb_users, users[client.user_id].challenged);
-                     write_client(clients[find_client(clients, nb_clients, opponent_id)].sock,"game_accepted");
+                     token = strtok(NULL, "\n");
+                     User *opponent_user = find_user(users, nb_users, client.user->challenged);
+                     Client* opponent_client = find_client(clients, nb_clients, opponent_user);
+                     write_client(opponent_client->sock, "game_accepted");
 
-                     users[client.user_id].is_playing = 1;
-                     users[opponent_id].is_playing = 1;
+                     client.user->is_playing = 1;
+                     opponent_user->is_playing = 1;
 
-                     users[client.user_id].is_challenged = 0;
-                     users[client.user_id].is_challenging = 0;
-                     users[opponent_id].is_challenged = 0;
+                     client.user->is_challenged = 0;
+                     client.user->is_challenging = 0;
+                     opponent_user->is_challenged = 0;
 
                      // choose player one
-                     ClientState statePlayer1 = (rand()>0.5)? WAITING_MOVE:PLAYING;
+                     ClientState statePlayer1 = (rand() > 0.5) ? WAITING_MOVE : PLAYING;
                      clients[i].state = statePlayer1;
-                     clients[find_client(clients, nb_clients, opponent_id)].state = (statePlayer1 == WAITING_MOVE)? PLAYING:WAITING_MOVE;
+                     opponent_client->state = (statePlayer1 == WAITING_MOVE) ? PLAYING : WAITING_MOVE;
 
-                     // create new awale running 
-                     awale_running[nb_awale_running].player0_id = (statePlayer1 == WAITING_MOVE)? opponent_id:i;
-                     awale_running[nb_awale_running].player1_id = (statePlayer1 == WAITING_MOVE)? i:opponent_id;
+                     // create new awale running
+                     awale_init_game(&awale_running[nb_awale_running]);
+                     awale_running[nb_awale_running].player0 = (statePlayer1 == WAITING_MOVE) ? opponent_user : clients[i].user;
+                     awale_running[nb_awale_running].player1 = (statePlayer1 == WAITING_MOVE) ? clients[i].user : opponent_user;
                      ++nb_awale_running;
                      printf("new awale created !\n");
-
-                     awale_init_game(&awale_running[nb_awale_running-1]);
                      // TODO send message with info about the game (don't know what theo did/didn't do)
-
                   }
                   /*refused challenge*/
-                  else if(users[client.user_id].is_challenged == 1 && !strcmp(token, "game_refused") )
+                  else if (client.user->is_challenged == 1 && !strcmp(token, "game_refused"))
                   {
-                     token = strtok(NULL, "\n");                     
-                     int refused_id = find_user(users, nb_users, token);
+                     token = strtok(NULL, "\n");
+                     User *challenger = find_user(users, nb_users, token);
 
-                     users[client.user_id].is_challenged = 0;
-                     users[client.user_id].is_challenging = 0;
-                     users[refused_id].is_challenged = 0;
+                     client.user->is_challenged = 0;
+                     client.user->is_challenging = 0;
+                     challenger->is_challenged = 0;
 
-                     write_client(clients[find_client(clients, nb_clients, refused_id)].sock,"game_refused");
+                     write_client(find_client(clients, nb_clients, challenger)->sock, "game_refused");
                   }
                }
                break;
@@ -247,54 +244,54 @@ static void app(void)
    end_connection(sock);
 }
 
-static int find_client(Client *clients, int nb_clients, int user_id)
+static Client *find_client(Client *clients, int nb_clients, User *user)
 {
    for (int i = 0; i < nb_clients; i++)
    {
-      if (clients[i].user_id == user_id)
+      if (clients[i].user == user)
       {
-         return i;
+         return &clients[i];
       }
    }
-   return -1;
+   return NULL;
 }
 
-static int find_user(User *users, int nb_users, char *username)
+static User *find_user(User *users, int nb_users, char *username)
 {
    for (int id = 0; id < nb_users; ++id)
    {
       if (!strcmp(username, users[id].name))
       {
-         return id;
+         return &users[id];
       }
    }
-   return -1;
+   return NULL;
 }
 
-static int connect_user(User *users, int *nb_users, char *username)
+static User *connect_user(User *users, int *nb_users, char *username)
 {
    if (strlen(username) >= USERNAME_LENGTH || strchr(username, ',') != NULL || strchr(username, ':') != NULL)
    {
-      return -1;
+      return NULL;
    }
-   int id = find_user(users, *nb_users, username);
-   if (id == -1)
+   User *user = find_user(users, *nb_users, username);
+   if (user == NULL && *nb_users < MAX_USERS)
    {
-      id = *nb_users;
-      strcpy(users[id].name, username);
-      users[id].is_connected = 1;
-      users[id].is_playing = 0;
+      user = &users[*nb_users];
       (*nb_users)++;
+      strcpy(user->name, username);
+      user->is_connected = 1;
+      user->is_playing = 0;
    }
    else
    {
-      if (users[id].is_connected == 1)
+      if (user->is_connected == 1)
       {
-         return -1;
+         return NULL;
       }
-      users[id].is_connected = 1;
+      user->is_connected = 1;
    }
-   return id;
+   return user;
 }
 
 static void clear_clients(Client *clients, int nb_clients)
@@ -308,7 +305,7 @@ static void clear_clients(Client *clients, int nb_clients)
 
 static void remove_client(Client *clients, int to_remove, int *nb_clients, User *users)
 {
-   users[clients[to_remove].user_id].is_connected = 0;
+   clients[to_remove].user->is_connected = 0;
    /* we remove the client in the array */
    memmove(clients + to_remove, clients + to_remove + 1, (*nb_clients - to_remove - 1) * sizeof(Client));
    /* number client - 1 */
@@ -327,7 +324,7 @@ static void send_message_to_all_clients(Client *clients, Client source, int nb_c
       {
          if (from_server == 0)
          {
-            strncat(message, users[source.user_id].name, BUF_SIZE - 1);
+            strncat(message, source.user->name, BUF_SIZE - 1);
             strncat(message, ": ", sizeof message - strlen(message) - 1);
          }
          strncat(message, buffer, sizeof message - strlen(message) - 1);
@@ -346,7 +343,7 @@ static void send_user_list_to_client(Client target, Client *clients, int nb_clie
       /* we don't send his name to the target */
       if (target.sock != clients[i].sock)
       {
-         strncat(message, users[clients[i].user_id].name, sizeof message - strlen(message) - 1);
+         strncat(message, clients[i].user->name, sizeof message - strlen(message) - 1);
          strncat(message, ",", sizeof message - strlen(message) - 1);
       }
    }

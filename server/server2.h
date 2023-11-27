@@ -50,8 +50,8 @@ static void send_message_to_all_clients(Client *clients, Client sender, int nb_c
 static void remove_client(Client *clients, int to_remove, int *nb_clients, User *users);
 static void clear_clients(Client *clients, int actual);
 static void send_user_list_to_client(Client target, Client *clients, int nb_clients, User *users);
-static int connect_user(User *users, int *nb_users, char *username);
-static int find_client(Client *clients, int nb_clients, int user_id);
-static int find_user(User *users, int nb_users, char *username);
+static User* connect_user(User *users, int *nb_users, char *username);
+static Client* find_client(Client *clients, int nb_clients, User* user);
+static User* find_user(User *users, int nb_users, char *username);
 
 #endif /* guard */

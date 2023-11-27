@@ -2,6 +2,7 @@
 #define CLIENT_H
 
 #include "server2.h"
+#include "user.h"
 
 typedef enum ClientState
 {
@@ -15,7 +16,7 @@ typedef enum ClientState
 typedef struct Client
 {
    SOCKET sock;
-   int user_id; // user id in the user list
+   User *user;
    ClientState state;
 } Client;
 
