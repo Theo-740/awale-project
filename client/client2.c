@@ -32,7 +32,6 @@ void app(const char *address, const char *name)
 {
    SOCKET sock = init_connection(address);
    char buffer[BUF_SIZE];
-   char last_info[BUF_SIZE];
    Controller ctrl;
 
    fd_set rdfs;
@@ -95,7 +94,7 @@ void app(const char *address, const char *name)
                buffer[BUF_SIZE - 1] = 0;
             }
          }
-         controller_user_input(&ctrl, sock, buffer, last_info);
+         controller_user_input(&ctrl, sock, buffer);
       }
       else if (FD_ISSET(sock, &rdfs))
       {
@@ -106,7 +105,6 @@ void app(const char *address, const char *name)
             printf("Server disconnected !\n");
             break;
          }
-         strcpy(last_info,buffer);
          controller_server_input(&ctrl, sock, buffer);
       }
    }
