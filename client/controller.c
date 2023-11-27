@@ -42,6 +42,20 @@ static void challenged_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SI
     c->state = CHALLENGED;
 }
 
+static void reshow_infos_challenge(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
+{
+    char *token = strtok(buffer, ":");
+    if(!strcmp(token, "challenged"))
+    {
+        new_challenge_server_input(c,serv_sock,buffer);
+    } else
+    {
+        token = strtok(NULL, ",");
+        strcpy(c->challenger, token);
+        printf("you challenged %s. To undo this action enter anything\n", token);
+    }
+}
+
 static void new_challenge_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
 {
     char *token = strtok(buffer, ":");
@@ -111,7 +125,6 @@ static void game_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
     c->state = GAME;
     c->game.loaded = 0;
     printf("loading game...\n");
-    write_server(serv_sock, "game_state");
 }
 
 static void game_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
@@ -268,7 +281,10 @@ void controller_init(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE], Con
         printf("you are currently in a game\n");
         game_enter(c, serv_sock, buffer);
         break;
-
+    case CHALLENGED:
+        challenged_enter(c, serv_sock, buffer);
+        reshow_infos_challenge(c,serv_sock, buffer);
+        break;
     }
 }
 

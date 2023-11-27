@@ -87,7 +87,6 @@ static void app(void)
          /* after connecting the client sends its name */
          if (read_client(csock, buffer) == -1)
          {
-            /* disconnected */
             continue;
          }
 
@@ -117,14 +116,16 @@ static void app(void)
             }
             else if (c->user->is_challenging == 1)
             {
-               strcpy(buffer, "challenge:");
+               strcpy(buffer, "challenging:");
                strcat(buffer, c->user->challenged);
                write_client(csock, buffer);
             }
             else if (c->user->is_challenged == 1)
             {
-               strcpy(buffer, "challenge:");
+               strcpy(buffer, "challenged:");
                strcat(buffer, c->user->challenged);
+               printf("challenger name : %s\n", c->user->challenged);
+
                write_client(csock, buffer);
             }
             else
@@ -134,7 +135,7 @@ static void app(void)
             }
             strncpy(buffer, c->user->name, BUF_SIZE - 1);
             strncat(buffer, " connected !", BUF_SIZE - strlen(buffer) - 1);
-            send_message_to_all_clients(clients, *c, nb_clients, users, buffer, 1);
+            //send_message_to_all_clients(clients, *c, nb_clients, users, buffer, 1);
          }
       }
       else
@@ -150,15 +151,18 @@ static void app(void)
                /* client disconnected */
                if (c == 0)
                {
+                  clients[i].user->is_connected = 0;
                   closesocket(clients[i].sock);
                   remove_client(clients, i, &nb_clients, users);
                   strncpy(buffer, client.user->name, BUF_SIZE - 1);
                   strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
-                  send_message_to_all_clients(clients, client, nb_clients, users, buffer, 1);
+                  //send_message_to_all_clients(clients, client, nb_clients, users, buffer, 1);
                }
                else
                {
                   char *token = strtok(buffer, ":");
+
+                  printf("work before game accepted");
                   if (!strcmp(token, "chat"))
                   {
                      send_message_to_all_clients(clients, client, nb_clients, users, buffer + 5, 0);
@@ -186,7 +190,7 @@ static void app(void)
                         challenged_user->is_challenged = 1;
 
                         strcpy(client.user->challenged, challenged_user->name);
-                        strcpy(client.user->challenged, client.user->name);
+                        strcpy(challenged_user->name, client.user->name);
                      }
                      else
                      {
@@ -194,11 +198,14 @@ static void app(void)
                      }
                   }
                   /* accept a challenge */
-                  else if (client.user->is_challenged == 1 && !strcmp(token, "game_accepted"))
+                  else if (!strcmp(token, "game_accepted"))
                   {
+
+                     printf("work just after game accepted");
                      token = strtok(NULL, "\n");
                      User *opponent_user = find_user(users, nb_users, client.user->challenged);
                      Client* opponent_client = find_client(clients, nb_clients, opponent_user);
+
                      write_client(opponent_client->sock, "game_accepted");
 
                      client.user->is_playing = 1;
@@ -222,7 +229,7 @@ static void app(void)
                      // TODO send message with info about the game (don't know what theo did/didn't do)
                   }
                   /*refused challenge*/
-                  else if (client.user->is_challenged == 1 && !strcmp(token, "game_refused"))
+                  else if (!strcmp(token, "game_refused"))
                   {
                      token = strtok(NULL, "\n");
                      User *challenger = find_user(users, nb_users, token);
@@ -281,7 +288,7 @@ static User *connect_user(User *users, int *nb_users, char *username)
       (*nb_users)++;
       strcpy(user->name, username);
       user->is_connected = 1;
-      user->is_playing = 0;
+      //user->is_playing = 0;
    }
    else
    {

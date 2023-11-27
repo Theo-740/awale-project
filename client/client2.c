@@ -55,6 +55,10 @@ void app(const char *address, const char *name)
    {
       controller_init(&ctrl, sock, buffer, MAIN_MENU);
    }
+   else if (!strncmp(buffer, "challenged", 10)||!strncmp(buffer, "challenging", 11))
+   {
+      controller_init(&ctrl, sock, buffer, CHALLENGED);
+   }
    else
    {
       printf("error malformed response from server\n");

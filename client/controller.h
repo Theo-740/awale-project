@@ -44,5 +44,6 @@ static void user_list_server_input(Controller *c, SOCKET serv_sock, char buffer[
 static void challenged_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
 static void new_challenge_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
 static void new_challenge_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
+static void reshow_infos_challenge(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE]);
 
 #endif
