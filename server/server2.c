@@ -132,12 +132,12 @@ static void app(void)
                         challenge_user(client, content);
                      }
                      /* accept a challenge */
-                     else if (!strcmp(header, "game_accepted"))
+                     else if (!strcmp(header, "accept_challenge"))
                      {
                         accept_challenge(client);
                      }
                      /*refuse challenge*/
-                     else if (!strcmp(header, "game_refused"))
+                     else if (!strcmp(header, "refuse_challenge"))
                      {
                         refuse_challenge(client);
                      }
@@ -163,7 +163,7 @@ static void app(void)
                         Client *opponent_client = find_client(opponent_user);
                         if (opponent_client != NULL)
                         {
-                           write_client(opponent_client->sock, "withdrew");
+                           write_client(opponent_client->sock, "withdrew;");
                         }
                         client->user->state = FREE;
                         opponent_user->state = FREE;
@@ -270,7 +270,7 @@ static void connect_client(SOCKET sock, int *max_fd, fd_set *rdfs)
    User *user = connect_user(buffer);
    if (user == NULL)
    {
-      write_client(csock, "nope");
+      write_client(csock, "nope;");
       closesocket(csock);
    }
    else
@@ -288,26 +288,27 @@ static void connect_client(SOCKET sock, int *max_fd, fd_set *rdfs)
 
       if (client->user->state == PLAYING || client->user->state == WAITING_MOVE)
       {
-         write_client(client->sock, "game");
+         write_client(client->sock, "game;");
          RunningGame *game = find_running_game_by_player(client->user);
          add_observer(game, client);
       }
       else if (client->user->state == CHALLENGING)
       {
          strcpy(buffer, "challenging:");
-         strcat(buffer, client->user->opponent->name);
+         strncat(buffer, client->user->opponent->name, BUF_SIZE - strlen(buffer) - 1);
+         strncat(buffer, ";", BUF_SIZE - strlen(buffer) - 1);
          write_client(client->sock, buffer);
       }
       else if (client->user->state == CHALLENGED)
       {
          strcpy(buffer, "challenged:");
-         strcat(buffer, client->user->opponent->name);
-
+         strncat(buffer, client->user->opponent->name, BUF_SIZE - strlen(buffer) - 1);
+         strncat(buffer, ";", BUF_SIZE - strlen(buffer) - 1);
          write_client(client->sock, buffer);
       }
       else
       {
-         write_client(client->sock, "menu");
+         write_client(client->sock, "menu;");
       }
 
       /*strncpy(buffer, client->user->name, BUF_SIZE - 1);
@@ -346,6 +347,7 @@ static void challenge_user(Client *challenger, const char *username)
       Client *challenged_client = find_client(challenged_user);
       strncpy(buffer, "challenged:", BUF_SIZE - 1);
       strncat(buffer, challenger->user->name, BUF_SIZE - strlen(buffer) - 1);
+      strncat(buffer, ";", BUF_SIZE - strlen(buffer) - 1);
       write_client(challenged_client->sock, buffer);
       challenger->user->state = CHALLENGING;
       challenged_user->state = CHALLENGED;
@@ -354,7 +356,7 @@ static void challenge_user(Client *challenger, const char *username)
    }
    else
    {
-      write_client(challenger->sock, "game_refused");
+      write_client(challenger->sock, "challenge_refused;");
    }
 }
 
@@ -368,7 +370,7 @@ static void accept_challenge(Client *client)
    Client *opponent_client = find_client(opponent_user);
    if (opponent_client != NULL)
    {
-      write_client(opponent_client->sock, "game_accepted");
+      write_client(opponent_client->sock, "challenge_accepted;");
    }
 
    User *first_player;
@@ -411,7 +413,7 @@ static void refuse_challenge(Client *client)
    Client *challenger_client = find_client(challenger);
    if (challenger_client != NULL)
    {
-      write_client(challenger_client->sock, "game_refused");
+      write_client(challenger_client->sock, "challenge_refused;");
    }
 }
 
@@ -428,14 +430,14 @@ static void cancel_challenge(Client *client)
    Client *challenged_client = find_client(challenged);
    if (challenged_client != NULL)
    {
-      write_client(challenged_client->sock, "challenge_canceled");
+      write_client(challenged_client->sock, "challenge_canceled;");
    }
 }
 
 static void send_game(Client *client, RunningGame *game)
 {
    char message[BUF_SIZE];
-   sprintf(message, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
+   sprintf(message, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d};",
            (client->user == game->player0) ? 0 : 1,
            game->awale.infos.nbTurns % 2,
            game->awale.board[0],
@@ -459,7 +461,7 @@ static void send_game(Client *client, RunningGame *game)
 static void send_winner_game(Client *client, RunningGame *game)
 {
    char message[BUF_SIZE];
-   sprintf(message, "game_end:{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
+   sprintf(message, "game_end:{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d};",
            (client->user == game->player0) ? 0 : 1,
            game->awale.infos.winner,
            game->awale.board[0],
@@ -520,7 +522,7 @@ static void make_move(Client *client, const char *move_description)
       {
          client->user->state = WAITING_MOVE;
          opponent_user->state = PLAYING;
-         sprintf(buffer, "move:%d", move);
+         sprintf(buffer, "move:%d;", move);
          for (int i = 0; i < game->nb_observers; i++)
          {
             if (game->observers[i] != client)
@@ -680,6 +682,7 @@ static void send_chat_message_to_all_clients(Client *source, const char *buffer,
             strncat(message, ": ", sizeof message - strlen(message) - 1);
          }
          strncat(message, buffer, sizeof message - strlen(message) - 1);
+         strncat(message, ";", sizeof message - strlen(message) - 1);
          write_client(clients[i].sock, message);
       }
    }
@@ -699,6 +702,7 @@ static void send_user_list_to_client(Client *target)
          strncat(message, ",", sizeof message - strlen(message) - 1);
       }
    }
+   message[strlen(message)-1]= ';';
    write_client(target->sock, message);
 }
 

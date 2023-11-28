@@ -71,37 +71,85 @@ int awale_play_move(awale_game *game, int move)
 
 void awale_print_game(awale_game *game)
 {
-    printf("game:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
-           game->id,
-           game->turn,
-           game->board[0],
-           game->board[1],
-           game->board[2],
-           game->board[3],
-           game->board[4],
-           game->board[5],
-           game->board[6],
-           game->board[7],
-           game->board[8],
-           game->board[9],
-           game->board[10],
-           game->board[11],
-           game->scores[0],
-           game->scores[1]);
+    printf("opponent: %s\n", game->opponent);
+    if (game->id == 0)
+    {
+        int i = AWALE_BOARD_SIZE - 1;
+        printf("%hhd", game->board[i--]);
+        while (i >= AWALE_BOARD_SIZE / 2)
+        {
+            printf("|%hhd", game->board[i--]);
+        }
+        printf("\n");
+        for (i = 0; i < AWALE_BOARD_SIZE / 2 - 1; i++)
+        {
+            printf("-+");
+        }
+        printf("-\n");
+        i = 0;
+        printf("%hhd", game->board[i++]);
+        while (i < AWALE_BOARD_SIZE / 2)
+        {
+            printf("|%hhd", game->board[i++]);
+        }
+        printf("\n");
+    }
+    else
+    {
+        int i = AWALE_BOARD_SIZE / 2 - 1;
+        printf("%hhd", game->board[i--]);
+        while (i >= 0)
+        {
+            printf("|%hhd", game->board[i--]);
+        }
+        printf("\n");
+        for (i = 0; i < AWALE_BOARD_SIZE / 2 - 1; i++)
+        {
+            printf("-+");
+        }
+        printf("-\n");
+        i = AWALE_BOARD_SIZE / 2;
+        printf("%hhd", game->board[i++]);
+        while (i < AWALE_BOARD_SIZE)
+        {
+            printf("|%hhd", game->board[i++]);
+        }
+        printf("\n");
+    }
     if (game->winner == -1)
     {
         if (game->turn == game->id)
         {
+            for (int i = 0; i < AWALE_BOARD_SIZE / 2; i++)
+            {
+                printf("^ ");
+            }
+            printf("\n");
+            for (int i = 0; i < AWALE_BOARD_SIZE / 2; i++)
+            {
+                printf("| ");
+            }
+            printf("\n");
+            for (int i = 0; i < AWALE_BOARD_SIZE / 2; i++)
+            {
+                printf("%d ", i);
+            }
+            printf("\n");
             printf("it's your turn\n");
         }
         else
         {
             printf("it's your opponent's turn\n");
         }
-    } else {
-        if(game->winner == game->id) {
+    }
+    else
+    {
+        if (game->winner == game->id)
+        {
             printf("you won!!\n");
-        } else {
+        }
+        else
+        {
             printf("you lost!!\n");
         }
     }

@@ -32,6 +32,7 @@ typedef struct in_addr IN_ADDR;
 #define PORT     1977
 
 #define BUF_SIZE 1024
+#define MAX_MESSAGES 16
 
 void init(void);
 void end(void);

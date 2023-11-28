@@ -36,36 +36,9 @@ void app(const char *address, const char *name)
 
    fd_set rdfs;
 
-   /* send our name */
-   write_server(sock, name);
+   controller_init(&ctrl, sock, name);
 
-   /* read server response */
-   read_server(sock, buffer);
-
-   if (!strncmp(buffer, "nope", 4))
-   {
-      printf("user is already connected\n");
-      exit(1);
-   }
-   else if (!strncmp(buffer, "game", 4))
-   {
-      controller_init(&ctrl, sock, buffer, GAME);
-   }
-   else if (!strncmp(buffer, "menu", 4))
-   {
-      controller_init(&ctrl, sock, buffer, MAIN_MENU);
-   }
-   else if (!strncmp(buffer, "challenged", 10) || !strncmp(buffer, "challenging", 11))
-   {
-      controller_init(&ctrl, sock, buffer, CHALLENGED);
-   }
-   else
-   {
-      printf("error malformed response from server\n");
-      exit(1);
-   }
-
-   while (1)
+   while (ctrl.state != TERMINATED)
    {
       FD_ZERO(&rdfs);
 
@@ -98,7 +71,7 @@ void app(const char *address, const char *name)
                buffer[BUF_SIZE - 1] = 0;
             }
          }
-         controller_user_input(&ctrl, sock, buffer);
+         controller_user_input(&ctrl, buffer);
       }
       else if (FD_ISSET(sock, &rdfs))
       {
@@ -109,7 +82,17 @@ void app(const char *address, const char *name)
             printf("Server disconnected !\n");
             break;
          }
-         controller_server_input(&ctrl, sock, buffer);
+         char *messages[MAX_MESSAGES];
+         messages[0] = strtok(buffer, ";");
+         int nb_messages = 1;
+         while (nb_messages < MAX_MESSAGES && (messages[nb_messages] = strtok(NULL, ";")) != NULL)
+         {
+            nb_messages++;
+         }
+         for (int i = 0; i < nb_messages; i++)
+         {
+            controller_server_input(&ctrl, messages[i]);
+         }
       }
    }
 
