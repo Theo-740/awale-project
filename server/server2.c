@@ -104,102 +104,112 @@ static void app(void)
                }
                else
                {
-                  /*handle message*/
-                  char *token = strtok(buffer, ":");
-                  /* relay chat message*/
-                  if (!strcmp(token, "chat"))
+                  char *messages[MAX_MESSAGES];
+                  messages[0] = strtok(buffer, ";");
+                  int nb_messages = 1;
+                  while (i < MAX_MESSAGES && (messages[nb_messages] = strtok(NULL, ";")) != NULL)
                   {
-                     send_chat_message_to_all_clients(client, buffer + 5, 0);
+                     nb_messages++;
                   }
-                  /* show player list */
-                  else if (!strcmp(token, "user_list"))
+                  for (int j = 0; j < nb_messages; j++)
                   {
-                     send_user_list_to_client(client);
-                  }
-                  /* challenge a user if didn't already asked someone */
-                  else if (!strcmp(token, "challenge") && client->user->state == 0)
-                  {
-                     challenge_user(client);
-                  }
-                  /* accept a challenge */
-                  else if (!strcmp(token, "game_accepted"))
-                  {
-                     accept_challenge(client);
-                  }
-                  /*refuse challenge*/
-                  else if (!strcmp(token, "game_refused"))
-                  {
-                     refuse_challenge(client);
-                  }
-                  /*cancel challenge*/
-                  else if (!strcmp(token, "cancel_challenge"))
-                  {
-                     cancel_challenge(client);
-                  }
-                  else if (!strcmp(token, "game_state"))
-                  {
-                     AwaleRunningGame *game = find_awale_running(client->user);
-
-                     send_game(client, game);
-                  }
-                  else if (!strcmp(token, "move"))
-                  {
-                     token = strtok(NULL, "\n");
-                     int move;
-                     sscanf(token, "%d", &move);
-                     AwaleRunningGame *game = find_awale_running(client->user);
-
-                     if (
-                         client->user->state == PLAYING)
+                     /*handle message*/
+                     char *content;
+                     char *header = strtok_r(messages[j], ":", &content);
+                     /* relay chat message*/
+                     if (!strcmp(header, "chat"))
                      {
-                        int move_awale = awale_play_move(game, move);
+                        send_chat_message_to_all_clients(client, content, 0);
+                     }
+                     /* show player list */
+                     else if (!strcmp(header, "user_list"))
+                     {
+                        send_user_list_to_client(client);
+                     }
+                     /* challenge a user if didn't already asked someone */
+                     else if (!strcmp(header, "challenge") && client->user->state == 0)
+                     {
+                        challenge_user(client, content);
+                     }
+                     /* accept a challenge */
+                     else if (!strcmp(header, "game_accepted"))
+                     {
+                        accept_challenge(client);
+                     }
+                     /*refuse challenge*/
+                     else if (!strcmp(header, "game_refused"))
+                     {
+                        refuse_challenge(client);
+                     }
+                     /*cancel challenge*/
+                     else if (!strcmp(header, "cancel_challenge"))
+                     {
+                        cancel_challenge(client);
+                     }
+                     else if (!strcmp(header, "game_state"))
+                     {
+                        AwaleRunningGame *game = find_awale_running(client->user);
 
-                        if (move_awale < 0)
+                        send_game(client, game);
+                     }
+                     else if (!strcmp(header, "move"))
+                     {
+                        int move;
+                        sscanf(content, "%d", &move);
+                        AwaleRunningGame *game = find_awale_running(client->user);
+
+                        if (
+                            client->user->state == PLAYING)
                         {
-                           send_game(client, game);
-                        }
-                        /* game over */
-                        else if (move_awale == 1 || move_awale == 2)
-                        {
-                           User *opponent_user = (game->player0 != client->user) ? game->player0 : game->player1;
-                           Client *opponent_client = find_client(opponent_user);
+                           int move_awale = awale_play_move(game, move);
 
-                           send_winner_game(client, game);
-                           send_winner_game(opponent_client, game);
+                           if (move_awale < 0)
+                           {
+                              send_game(client, game);
+                           }
+                           /* game over */
+                           else if (move_awale == 1 || move_awale == 2)
+                           {
+                              User *opponent_user = (game->player0 != client->user) ? game->player0 : game->player1;
+                              Client *opponent_client = find_client(opponent_user);
 
-                           // create an awale stored
-                           //  put awale in the awale stored
-                           // AwaleStoredGame* stored_game = store_awale_game(game, awale_stored, &nb_awale_stored);
+                              send_winner_game(client, game);
+                              send_winner_game(opponent_client, game);
 
-                           client->user->state = FREE;
-                           opponent_user->state = FREE;
-                        }
-                        else
-                        {
-                           User *opponent_user = (game->player0 != client->user) ? game->player0 : game->player1;
-                           Client *opponent_client = find_client(opponent_user);
-                           client->user->state = WAITING_MOVE;
-                           opponent_user->state = PLAYING;
-                           sprintf(buffer, "move:%d", move);
-                           write_client(opponent_client->sock, buffer);
+                              // create an awale stored
+                              //  put awale in the awale stored
+                              // AwaleStoredGame* stored_game = store_awale_game(game, awale_stored, &nb_awale_stored);
+
+                              client->user->state = FREE;
+                              opponent_user->state = FREE;
+                           }
+                           else
+                           {
+                              User *opponent_user = (game->player0 != client->user) ? game->player0 : game->player1;
+                              Client *opponent_client = find_client(opponent_user);
+                              client->user->state = WAITING_MOVE;
+                              opponent_user->state = PLAYING;
+                              sprintf(buffer, "move:%d", move);
+                              write_client(opponent_client->sock, buffer);
+                           }
                         }
                      }
-                  }
-                  else if (!strcmp(token, "withdraw"))
-                  {
-                     AwaleRunningGame *game = find_awale_running(client->user);
-                     game->winner = (client->user == game->player0) ? 1 : 0;
-                     User *opponent_user = (game->player0 != client->user) ? game->player0 : game->player1;
-                     Client *opponent_client = find_client(opponent_user);
+                     else if (!strcmp(header, "withdraw"))
+                     {
+                        AwaleRunningGame *game = find_awale_running(client->user);
+                        game->winner = (client->user == game->player0) ? 1 : 0;
+                        User *opponent_user = (game->player0 != client->user) ? game->player0 : game->player1;
+                        Client *opponent_client = find_client(opponent_user);
 
-                     write_client(opponent_client->sock, "withdrew");
+                        write_client(opponent_client->sock, "withdrew");
 
-                     // create an awale stored
-                     //  put awale in the awale stored
-                     // AwaleStoredGame* stored_game = store_awale_game(game, awale_stored, &nb_awale_stored);
+                        // create an awale stored
+                        //  put awale in the awale stored
+                        // AwaleStoredGame* stored_game = store_awale_game(game, awale_stored, &nb_awale_stored);
 
-                     client->user->state = FREE;
-                     opponent_user->state = FREE;
+                        client->user->state = FREE;
+                        opponent_user->state = FREE;
+                     }
                   }
                }
                break;
@@ -356,15 +366,14 @@ static void disconnect_client(Client *client)
    send_message_to_all_clients(clients, client, nb_clients, users, buffer, 1);*/
 }
 
-static void challenge_user(Client *challenger)
+static void challenge_user(Client *challenger, char *username)
 {
    if (challenger->user->state != FREE)
    {
       return;
    }
    char buffer[BUF_SIZE];
-   char *token = strtok(NULL, ";");
-   User *challenged_user = find_user(token);
+   User *challenged_user = find_user(username);
    if (challenged_user != NULL && challenged_user->is_connected && challenged_user->state == FREE)
    {
       Client *challenged_client = find_client(challenged_user);

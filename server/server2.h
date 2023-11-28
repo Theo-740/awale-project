@@ -36,6 +36,7 @@ typedef struct in_addr IN_ADDR;
 #define MAX_PLAYING_GAME 50
 
 #define BUF_SIZE 1024
+#define MAX_MESSAGES 16
 
 #include "client2.h"
 #include "awale.h"
@@ -53,7 +54,7 @@ static void write_client(SOCKET sock, const char *buffer);
 static void connect_client(SOCKET sock, int *max_fd, fd_set *rdfs);
 static void disconnect_client(Client * client);
 
-static void challenge_user(Client * challenger);
+static void challenge_user(Client * challenger, char* username);
 static void accept_challenge(Client *client);
 static void refuse_challenge(Client *client);
 static void cancel_challenge(Client *client);

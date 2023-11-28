@@ -88,6 +88,7 @@ static void new_challenge_user_input(Controller *c, SOCKET serv_sock, char buffe
                 c->is_challenged = 0;
                 strncpy(buffer, "game_accepted:", BUF_SIZE-1);
                 strncat(buffer, c->challenger, BUF_SIZE -strlen(buffer)-1);
+                strncat(buffer, ";", BUF_SIZE -strlen(buffer)-1);
                 write_server(serv_sock, buffer);
                 game_enter(c,serv_sock,buffer);
                 break;
@@ -98,6 +99,7 @@ static void new_challenge_user_input(Controller *c, SOCKET serv_sock, char buffe
                 printf("went to refuse %d\n", c->state);
                 strncpy(buffer, "game_refused:", BUF_SIZE-1);
                 strncat(buffer, c->challenger, BUF_SIZE -strlen(buffer)-1);
+                strncat(buffer, ";", BUF_SIZE -strlen(buffer)-1);
                 write_server(serv_sock, buffer);
                 main_menu_enter(c,serv_sock,buffer);
                 break;
@@ -112,7 +114,7 @@ static void new_challenge_user_input(Controller *c, SOCKET serv_sock, char buffe
             printf("write a number please\n");
         }
     }else{
-        write_server(serv_sock, "game_refused");
+        write_server(serv_sock, "game_refused;");
 
         main_menu_enter(c,serv_sock, buffer);
     }
@@ -124,7 +126,7 @@ static void game_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
     c->state = GAME;
     c->game.loaded = 0;
     printf("loading game...\n");
-    write_server(serv_sock, "game_state");
+    write_server(serv_sock, "game_state;");
 }
 
 static void game_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
@@ -132,7 +134,7 @@ static void game_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZ
 
     if (buffer[0] == 'w')
     {
-        write_server(serv_sock, "withdraw");
+        write_server(serv_sock, "withdraw;");
         printf("you withdrew from the game\nyou lost!\n");
         main_menu_enter(c, serv_sock, buffer);
         return;
@@ -151,7 +153,7 @@ static void game_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZ
         }
         else
         {
-            snprintf(buffer, BUF_SIZE, "move:%d", move);
+            snprintf(buffer, BUF_SIZE, "move:%d;", move);
             write_server(serv_sock, buffer);
             awale_print_game(&c->game);
         }
@@ -241,7 +243,7 @@ static void game_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_S
 
     if (!c->game.loaded)
     {
-        write_server(serv_sock, "game state");
+        write_server(serv_sock, "game state;");
     }
 }
 
@@ -251,7 +253,7 @@ static void user_list_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZ
     c->state = USER_LIST;
     c->nb_users = 0;
     printf("loading list...\n");
-    write_server(serv_sock, "user_list");
+    write_server(serv_sock, "user_list;");
 }
 
 static void user_list_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
@@ -259,12 +261,13 @@ static void user_list_user_input(Controller *c, SOCKET serv_sock, char buffer[BU
     if (c->nb_users == 0)
     {
         printf("wait! the list is still loading\n");
-        write_server(serv_sock, "user_list");
+        write_server(serv_sock, "user_list;");
     } else {
         int id;
         if(sscanf(buffer,"%d",&id) == 1 && id >= 0 && id < c->nb_users) {
             strncpy(buffer, "challenge:", BUF_SIZE-1);
             strncat(buffer, c->user_list[id], BUF_SIZE -strlen(buffer)-1);
+            strncat(buffer, ";", BUF_SIZE -strlen(buffer)-1);
             write_server(serv_sock, buffer);
             strcpy(c->challenger,c->user_list[id]);
 
