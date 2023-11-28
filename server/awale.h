@@ -4,7 +4,7 @@
 #include "user.h"
 
 #define AWALE_BOARD_SIZE 12
-#define AWALE_NB_BEANS_START 4
+#define AWALE_NB_BEANS_START 2
 #define AWALE_MIN_BEANS 3
 
 typedef unsigned char AwaleBoard[AWALE_BOARD_SIZE];

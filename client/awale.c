@@ -88,12 +88,21 @@ void awale_print_game(awale_game *game)
            game->board[11],
            game->scores[0],
            game->scores[1]);
-    if (game->turn == game->id)
+    if (game->winner == -1)
     {
-        printf("it's your turn\n");
-    }
-    else
-    {
-        printf("it's your opponent's turn\n");
+        if (game->turn == game->id)
+        {
+            printf("it's your turn\n");
+        }
+        else
+        {
+            printf("it's your opponent's turn\n");
+        }
+    } else {
+        if(game->winner == game->id) {
+            printf("you won!!\n");
+        } else {
+            printf("you lost!!\n");
+        }
     }
 }

@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <time.h>
 #include <string.h>
 
 #include "server2.h"
 
 static void init(void)
 {
+   srand(time(NULL));
 #ifdef WIN32
    WSADATA wsa;
    int err = WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -38,8 +40,11 @@ static void app(void)
    User users[30];
    int nb_users = 0;
 
-   AwaleRunningGame awale_running[MAX_CLIENTS];
+   AwaleRunningGame awale_running[MAX_PLAYING_GAME];
    int nb_awale_running = 0;
+
+   AwaleStoredGame awale_stored[MAX_STORED_GAME];
+   int nb_awale_stored = 0;
 
    fd_set rdfs;
 
@@ -227,24 +232,8 @@ static void app(void)
                   else if (!strcmp(token, "game_state"))
                   {
                      AwaleRunningGame *game = find_awale_running(client.user, awale_running, nb_awale_running);
-                     sprintf(buffer, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
-                             (client.user == game->player0) ? 0 : 1,
-                             game->nbTurns % 2,
-                             game->board[0],
-                             game->board[1],
-                             game->board[2],
-                             game->board[3],
-                             game->board[4],
-                             game->board[5],
-                             game->board[6],
-                             game->board[7],
-                             game->board[8],
-                             game->board[9],
-                             game->board[10],
-                             game->board[11],
-                             game->scores[0],
-                             game->scores[1]);
-                     write_client(client.sock, buffer);
+
+                     send_game(&client, game);
                   }
                   else if (!strcmp(token, "move"))
                   {
@@ -256,26 +245,29 @@ static void app(void)
                      if (
                          client.user->state == PLAYING)
                      {
-                        if (awale_play_move(game, move) < 0)
+                        int move_awale = awale_play_move(game, move);
+                        
+                        if ( move_awale < 0)
                         {
-                           sprintf(buffer, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
-                                   (client.user == game->player0) ? 0 : 1,
-                                   game->nbTurns % 2,
-                                   game->board[0],
-                                   game->board[1],
-                                   game->board[2],
-                                   game->board[3],
-                                   game->board[4],
-                                   game->board[5],
-                                   game->board[6],
-                                   game->board[7],
-                                   game->board[8],
-                                   game->board[9],
-                                   game->board[10],
-                                   game->board[11],
-                                   game->scores[0],
-                                   game->scores[1]);
-                           write_client(client.sock, buffer);
+                           send_game(&client, game);
+                        }
+                        /* game over */
+                        else if(move_awale == 1 || move_awale == 2)
+                        {
+                           User *opponent_user = (game->player0 != client.user) ? game->player0 : game->player1;
+                           Client *opponent_client = find_client(clients, nb_clients, opponent_user);
+
+                           
+                           send_winner_game(&client,game);
+                           send_winner_game(opponent_client, game);
+
+                           //create an awale stored 
+                           // put awale in the awale stored
+                           //AwaleStoredGame* stored_game = store_awale_game(game, awale_stored, &nb_awale_stored);
+
+                           client.user->state = FREE;
+                           opponent_user->state = FREE;
+
                         }
                         else
                         {
@@ -299,6 +291,57 @@ static void app(void)
    end_connection(sock);
 }
 
+static void send_game(Client *client, AwaleRunningGame *game)
+{
+   int i = 0;
+   char message[BUF_SIZE];
+   sprintf(message, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
+                             (client->user == game->player0) ? 0 : 1,
+                             game->nbTurns % 2,
+                             game->board[0],
+                             game->board[1],
+                             game->board[2],
+                             game->board[3],
+                             game->board[4],
+                             game->board[5],
+                             game->board[6],
+                             game->board[7],
+                             game->board[8],
+                             game->board[9],
+                             game->board[10],
+                             game->board[11],
+                             game->scores[0],
+                             game->scores[1]);
+   
+   write_client(client->sock, message);
+}
+
+static void send_winner_game(Client *client, AwaleRunningGame *game)
+{
+   int i = 0;
+   char message[BUF_SIZE];
+   sprintf(message, "game_end:{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
+                                   (client->user == game->player0) ? 0 : 1,
+                                   game->winner,
+                                   game->board[0],
+                                   game->board[1],
+                                   game->board[2],
+                                   game->board[3],
+                                   game->board[4],
+                                   game->board[5],
+                                   game->board[6],
+                                   game->board[7],
+                                   game->board[8],
+                                   game->board[9],
+                                   game->board[10],
+                                   game->board[11],
+                                   game->scores[0],
+                                   game->scores[1]);
+   
+   write_client(client->sock, message);
+
+}
+
 static AwaleRunningGame *find_awale_running(User *user, AwaleRunningGame *awale_running, int nb_awale_running)
 {
    for (int i = 0; i < nb_awale_running; ++i)
@@ -309,6 +352,12 @@ static AwaleRunningGame *find_awale_running(User *user, AwaleRunningGame *awale_
       }
    }
    return NULL;
+}
+
+static AwaleStoredGame* store_awale_game(AwaleRunningGame* game, AwaleStoredGame* awale_stored_games, int *nb_awale_stored)
+{
+   
+
 }
 
 static void print_all_users(User *users, int nb_user)

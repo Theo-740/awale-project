@@ -80,7 +80,7 @@ int awale_play_move(AwaleRunningGame *game, int move)
     {
         nb_beans[i / (AWALE_BOARD_SIZE / 2)] += game->board[i];
     }
-    if ((nb_beans[game->nbTurns % 2] == 0) && (nb_beans[0]+nb_beans[1] < AWALE_MIN_BEANS))
+    if ((nb_beans[game->nbTurns % 2] == 0) || (nb_beans[0]+nb_beans[1] < AWALE_MIN_BEANS))
     {
         game->scores[0] += nb_beans[0];
         game->scores[1] += nb_beans[1];

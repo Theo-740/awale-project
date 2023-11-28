@@ -32,6 +32,8 @@ typedef struct in_addr IN_ADDR;
 #define PORT 1977
 #define MAX_CLIENTS 100
 #define MAX_USERS 100
+#define MAX_STORED_GAME 200
+#define MAX_PLAYING_GAME 50
 
 #define BUF_SIZE 1024
 
@@ -55,5 +57,7 @@ static User* connect_user(User *users, int *nb_users, char *username);
 static Client* find_client(Client *clients, int nb_clients, User* user);
 static User* find_user(User *users, int nb_users, char *username);
 static AwaleRunningGame *find_awale_running(User *user, AwaleRunningGame *awale_running, int nb_awale_running);
+static void send_game(Client *client, AwaleRunningGame *game);
+static void send_winner_game(Client *client, AwaleRunningGame *game);
 
 #endif /* guard */

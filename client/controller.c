@@ -153,6 +153,7 @@ static void game_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZ
         {
             snprintf(buffer, BUF_SIZE, "move:%d", move);
             write_server(serv_sock, buffer);
+            awale_print_game(&c->game);
         }
     }
 }
@@ -209,6 +210,33 @@ static void game_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_S
         printf("opponent withdrew\nyou won!\n");
         main_menu_enter(c, serv_sock, buffer);
         return;
+    }
+    else if(!strncmp(buffer, "game_end", 8))
+    {
+        int read = sscanf(
+            buffer,
+            "game_end:{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}",
+            &c->game.id,
+            &c->game.winner,
+            &c->game.board[0],
+            &c->game.board[1],
+            &c->game.board[2],
+            &c->game.board[3],
+            &c->game.board[4],
+            &c->game.board[5],
+            &c->game.board[6],
+            &c->game.board[7],
+            &c->game.board[8],
+            &c->game.board[9],
+            &c->game.board[10],
+            &c->game.board[11],
+            &c->game.scores[0],
+            &c->game.scores[1]);
+        
+        awale_print_game(&c->game);
+
+        main_menu_enter(c,serv_sock,buffer);
+
     }
 
     if (!c->game.loaded)
