@@ -109,18 +109,17 @@ static void app(void)
             c->sock = csock;
             c->user = user;
 
-            if (c->user->is_playing == 1)
+            if (c->user->state == PLAYING || c->user->state == WAITING_MOVE)
             {
-               c->state = PLAYING;
                write_client(csock, "game");
             }
-            else if (c->user->is_challenging == 1)
+            else if (c->user->state == CHALLENGING)
             {
                strcpy(buffer, "challenging:");
                strcat(buffer, c->user->challenged);
                write_client(csock, buffer);
             }
-            else if (c->user->is_challenged == 1)
+            else if (c->user->state == CHALLENGED)
             {
                strcpy(buffer, "challenged:");
                strcat(buffer, c->user->challenged);
@@ -130,7 +129,6 @@ static void app(void)
             }
             else
             {
-               c->state = MENU;
                write_client(csock, "menu");
             }
             strncpy(buffer, c->user->name, BUF_SIZE - 1);
@@ -173,24 +171,22 @@ static void app(void)
                      send_user_list_to_client(client, clients, nb_clients, users);
                   }
                   /* challenge a user if didn't already asked someone */
-                  else if (!strcmp(token, "challenge") && client.user->is_challenged != 1)
+                  else if (!strcmp(token, "challenge") && client.user->state == 0)
                   {
                      token = strtok(NULL, "\n");
                      User *challenged_user = find_user(users, nb_users, token);
-                     if (challenged_user != NULL && challenged_user->is_connected && !challenged_user->is_playing && challenged_user->is_challenged != 1)
+                     if (challenged_user != NULL && challenged_user->is_connected && challenged_user->state == 0)
                      {
                         Client *challenged_client = find_client(clients, nb_clients, challenged_user);
-                        printf("challenged state : %d\n", challenged_client->state);
                         strncpy(buffer, "challenged:", BUF_SIZE - 1);
                         strncat(buffer, client.user->name, BUF_SIZE - strlen(buffer) - 1);
                         write_client(challenged_client->sock, buffer);
                         // TODO améliorer ça après discution mais pour l'instant relation 1/1
-                        client.user->is_challenged = 1;
-                        client.user->is_challenging = 1;
-                        challenged_user->is_challenged = 1;
+                        client.user->state = CHALLENGING;
+                        challenged_user->state = CHALLENGED;
 
                         strcpy(client.user->challenged, challenged_user->name);
-                        strcpy(challenged_user->name, client.user->name);
+                        strcpy(challenged_user->challenged, client.user->name);
                      }
                      else
                      {
@@ -208,17 +204,10 @@ static void app(void)
 
                      write_client(opponent_client->sock, "game_accepted");
 
-                     client.user->is_playing = 1;
-                     opponent_user->is_playing = 1;
-
-                     client.user->is_challenged = 0;
-                     client.user->is_challenging = 0;
-                     opponent_user->is_challenged = 0;
-
                      // choose player one
-                     ClientState statePlayer1 = (rand() > 0.5) ? WAITING_MOVE : PLAYING;
-                     clients[i].state = statePlayer1;
-                     opponent_client->state = (statePlayer1 == WAITING_MOVE) ? PLAYING : WAITING_MOVE;
+                     UserState statePlayer1 = (rand() > 0.5) ? WAITING_MOVE : PLAYING;
+                     clients[i].user->state = statePlayer1;
+                     opponent_client->user->state = (statePlayer1 == WAITING_MOVE) ? PLAYING : WAITING_MOVE;
 
                      // create new awale running
                      awale_init_game(&awale_running[nb_awale_running]);
@@ -231,13 +220,14 @@ static void app(void)
                   /*refused challenge*/
                   else if (!strcmp(token, "game_refused"))
                   {
-                     token = strtok(NULL, "\n");
-                     User *challenger = find_user(users, nb_users, token);
+                     print_all_users(users, nb_users);
+                     printf("challenger !\n");
+                     User *challenger = find_user(users, nb_users, client.user->challenged);
+                     printf("%p\n", (void*)challenger);
 
-                     client.user->is_challenged = 0;
-                     client.user->is_challenging = 0;
-                     challenger->is_challenged = 0;
-
+                     client.user->state = FREE;
+                     challenger->state = FREE;
+                     printf("write refused\n");
                      write_client(find_client(clients, nb_clients, challenger)->sock, "game_refused");
                   }
                }
@@ -249,6 +239,14 @@ static void app(void)
    printf("shuting down\n");
    clear_clients(clients, nb_clients);
    end_connection(sock);
+}
+
+static void print_all_users(User* users, int nb_user)
+{
+   for(int i=0; i<nb_user;++i)
+   {
+      printf("%d %s\n", i, users[i].name);
+   }
 }
 
 static Client *find_client(Client *clients, int nb_clients, User *user)
@@ -285,10 +283,12 @@ static User *connect_user(User *users, int *nb_users, char *username)
    if (user == NULL && *nb_users < MAX_USERS)
    {
       user = &users[*nb_users];
+      printf("new user %d\n", *nb_users);
       (*nb_users)++;
       strcpy(user->name, username);
       user->is_connected = 1;
-      //user->is_playing = 0;
+      user->state = 0;
+      printf("nb users %d\n", *nb_users);
    }
    else
    {

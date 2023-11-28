@@ -44,12 +44,13 @@ static void challenged_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SI
 
 static void reshow_infos_challenge(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
 {
-    char *token = strtok(buffer, ":");
-    if(!strcmp(token, "challenged"))
+    
+    if(!strncmp(buffer, "challenged",10))
     {
         new_challenge_server_input(c,serv_sock,buffer);
     } else
     {
+        char *token = strtok(buffer, ":");
         token = strtok(NULL, ",");
         strcpy(c->challenger, token);
         printf("you challenged %s. To undo this action enter anything\n", token);
@@ -111,9 +112,7 @@ static void new_challenge_user_input(Controller *c, SOCKET serv_sock, char buffe
             printf("write a number please\n");
         }
     }else{
-        strncpy(buffer, "game_refused:", BUF_SIZE-1);
-        strncat(buffer, c->challenger, BUF_SIZE -strlen(buffer)-1);
-        write_server(serv_sock, buffer);
+        write_server(serv_sock, "game_refused");
 
         main_menu_enter(c,serv_sock, buffer);
     }

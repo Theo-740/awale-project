@@ -5,15 +5,22 @@
 
 typedef char Username[USERNAME_LENGTH];
 
+typedef enum UserState
+{
+    FREE = 0,
+    PLAYING,
+    WAITING_MOVE,
+    CHALLENGED,
+    CHALLENGING
+}UserState;
+
 typedef struct User
 {
     Username name;
     int is_connected;
-    int is_playing;
-    int is_challenged;
-    int is_challenging;
-    Username challenged;
-} User;
 
+    Username challenged;
+    UserState state;
+} User;
 
 #endif

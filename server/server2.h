@@ -49,6 +49,7 @@ static void write_client(SOCKET sock, const char *buffer);
 static void send_message_to_all_clients(Client *clients, Client sender, int nb_clients, User *users, const char *buffer, char from_server);
 static void remove_client(Client *clients, int to_remove, int *nb_clients, User *users);
 static void clear_clients(Client *clients, int actual);
+static void print_all_users(User* users, int nb_user);
 static void send_user_list_to_client(Client target, Client *clients, int nb_clients, User *users);
 static User* connect_user(User *users, int *nb_users, char *username);
 static Client* find_client(Client *clients, int nb_clients, User* user);
