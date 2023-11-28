@@ -107,7 +107,7 @@ static void app(void)
                   char *messages[MAX_MESSAGES];
                   messages[0] = strtok(buffer, ";");
                   int nb_messages = 1;
-                  while (i < MAX_MESSAGES && (messages[nb_messages] = strtok(NULL, ";")) != NULL)
+                  while (nb_messages < MAX_MESSAGES && (messages[nb_messages] = strtok(NULL, ";")) != NULL)
                   {
                      nb_messages++;
                   }
