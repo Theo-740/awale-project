@@ -1,40 +1,28 @@
 #ifndef _AWALE_H
 #define _AWALE_H
 
-#include "user.h"
-
 #define AWALE_BOARD_SIZE 12
 #define AWALE_NB_BEANS_START 2
 #define AWALE_MIN_BEANS 3
+#define AWALE_MAX_TURNS 100
 
 typedef unsigned char AwaleBoard[AWALE_BOARD_SIZE];
 
-typedef struct AwaleStoredGame
+typedef struct AwaleGameInfos
 {
-    int winner_id;
-    int loser_id;
     int scores[2];
     int nbTurns;
-    int moves[100];
-}AwaleStoredGame;
-
-
-typedef struct AwaleRunningGame
-{
-    AwaleBoard board;
-    int scores[2];
-    int nbTurns;
-    int moves[100];
-    User* player0;
-    User* player1;
-    /**
-     * -1 if game still running
-     * 0 or 1 to designate winner
-    */
+    int moves[AWALE_MAX_TURNS];
     int winner;
-} AwaleRunningGame;
+} AwaleGameInfos;
 
-void awale_init_game(AwaleRunningGame* game);
+typedef struct AwaleGame
+{
+    AwaleGameInfos infos;
+    AwaleBoard board;
+} AwaleGame;
+
+void awale_init_game(AwaleGame *game);
 
 /**
  * return 0 if move is OK
@@ -44,7 +32,7 @@ void awale_init_game(AwaleRunningGame* game);
  * return -3 if move on wrong size of the board
  * return -4 if hole is empty
  */
-int awale_move_is_valid(AwaleRunningGame* game, int move);
+int awale_move_is_valid(AwaleGame *game, int move);
 
 /**
  * update the game to play
@@ -55,6 +43,6 @@ int awale_move_is_valid(AwaleRunningGame* game, int move);
  * return is negative -> move NOK & game not changed
  * see awaleMoveIsValid for error code
  */
-int awale_play_move(AwaleRunningGame* game, int move);
+int awale_play_move(AwaleGame *game, int move);
 
 #endif
