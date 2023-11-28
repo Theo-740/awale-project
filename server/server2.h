@@ -44,20 +44,37 @@ typedef struct in_addr IN_ADDR;
 static void init(void);
 static void end(void);
 static void app(void);
+
 static int init_connection(void);
 static void end_connection(int sock);
 static int read_client(SOCKET sock, char *buffer);
 static void write_client(SOCKET sock, const char *buffer);
-static void send_message_to_all_clients(Client *clients, Client sender, int nb_clients, User *users, const char *buffer, char from_server);
-static void remove_client(Client *clients, int to_remove, int *nb_clients, User *users);
-static void clear_clients(Client *clients, int actual);
-static void print_all_users(User* users, int nb_user);
-static void send_user_list_to_client(Client target, Client *clients, int nb_clients, User *users);
-static User* connect_user(User *users, int *nb_users, char *username);
-static Client* find_client(Client *clients, int nb_clients, User* user);
-static User* find_user(User *users, int nb_users, char *username);
-static AwaleRunningGame *find_awale_running(User *user, AwaleRunningGame *awale_running, int nb_awale_running);
+
+static void connect_client(SOCKET sock, int *max_fd, fd_set *rdfs);
+static void disconnect_client(Client * client);
+
+static void challenge_user(Client * challenger);
+static void accept_challenge(Client *client);
+static void refuse_challenge(Client *client);
+static void cancel_challenge(Client *client);
+
 static void send_game(Client *client, AwaleRunningGame *game);
 static void send_winner_game(Client *client, AwaleRunningGame *game);
+
+static AwaleRunningGame *find_awale_running(User *user);
+static AwaleStoredGame *store_awale_game(AwaleRunningGame *game);
+
+static void print_all_users();
+
+static Client *find_client(User *user);
+static User *find_user(char *username);
+static User *connect_user(char *username);
+
+static void clear_clients();
+
+static void remove_client(Client *client);
+
+static void send_chat_message_to_all_clients(Client *source, const char *buffer, char from_server);
+static void send_user_list_to_client(Client *target);
 
 #endif /* guard */

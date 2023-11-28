@@ -19,7 +19,7 @@ struct User
     Username name;
     int is_connected;
 
-    struct User* challenger;
+    struct User* opponent;
     UserState state;
 } ;
 typedef struct User User;
