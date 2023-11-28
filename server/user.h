@@ -14,13 +14,14 @@ typedef enum UserState
     CHALLENGING
 }UserState;
 
-typedef struct User
+struct User
 {
     Username name;
     int is_connected;
 
-    Username challenged;
+    struct User* challenger;
     UserState state;
-} User;
+} ;
+typedef struct User User;
 
 #endif

@@ -132,7 +132,7 @@ static void game_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZ
 
     if (buffer[0] == 'w')
     {
-        write_server(serv_sock, "withdrawal");
+        write_server(serv_sock, "withdraw");
         printf("you withdrew from the game\nyou lost!\n");
         main_menu_enter(c, serv_sock, buffer);
         return;
@@ -205,7 +205,7 @@ static void game_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_S
             c->game.loaded = 0;
         }
     }
-    else if (!strncmp(buffer, "withdrawal", 10))
+    else if (!strncmp(buffer, "withdrew", 10))
     {
         printf("opponent withdrew\nyou won!\n");
         main_menu_enter(c, serv_sock, buffer);

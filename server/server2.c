@@ -121,14 +121,13 @@ static void app(void)
             else if (c->user->state == CHALLENGING)
             {
                strcpy(buffer, "challenging:");
-               strcat(buffer, c->user->challenged);
+               strcat(buffer, c->user->challenger->name);
                write_client(csock, buffer);
             }
             else if (c->user->state == CHALLENGED)
             {
                strcpy(buffer, "challenged:");
-               strcat(buffer, c->user->challenged);
-               printf("challenger name : %s\n", c->user->challenged);
+               strcat(buffer, c->user->challenger->name);
 
                write_client(csock, buffer);
             }
@@ -188,8 +187,8 @@ static void app(void)
                         client.user->state = CHALLENGING;
                         challenged_user->state = CHALLENGED;
 
-                        strcpy(client.user->challenged, challenged_user->name);
-                        strcpy(challenged_user->challenged, client.user->name);
+                        client.user->challenger = challenged_user;
+                        challenged_user->challenger = client.user;
                      }
                      else
                      {
@@ -200,7 +199,7 @@ static void app(void)
                   else if (!strcmp(token, "game_accepted"))
                   {
                      token = strtok(NULL, "\n");
-                     User *opponent_user = find_user(users, nb_users, client.user->challenged);
+                     User *opponent_user = client.user->challenger;
                      Client *opponent_client = find_client(clients, nb_clients, opponent_user);
 
                      write_client(opponent_client->sock, "game_accepted");
@@ -219,14 +218,10 @@ static void app(void)
                   /*refused challenge*/
                   else if (!strcmp(token, "game_refused"))
                   {
-                     print_all_users(users, nb_users);
-                     printf("challenger !\n");
-                     User *challenger = find_user(users, nb_users, client.user->challenged);
-                     printf("%p\n", (void *)challenger);
+                     User *challenger = client.user->challenger;
 
                      client.user->state = FREE;
                      challenger->state = FREE;
-                     printf("write refused\n");
                      write_client(find_client(clients, nb_clients, challenger)->sock, "game_refused");
                   }
                   else if (!strcmp(token, "game_state"))
@@ -246,28 +241,26 @@ static void app(void)
                          client.user->state == PLAYING)
                      {
                         int move_awale = awale_play_move(game, move);
-                        
-                        if ( move_awale < 0)
+
+                        if (move_awale < 0)
                         {
                            send_game(&client, game);
                         }
                         /* game over */
-                        else if(move_awale == 1 || move_awale == 2)
+                        else if (move_awale == 1 || move_awale == 2)
                         {
                            User *opponent_user = (game->player0 != client.user) ? game->player0 : game->player1;
                            Client *opponent_client = find_client(clients, nb_clients, opponent_user);
 
-                           
-                           send_winner_game(&client,game);
+                           send_winner_game(&client, game);
                            send_winner_game(opponent_client, game);
 
-                           //create an awale stored 
-                           // put awale in the awale stored
-                           //AwaleStoredGame* stored_game = store_awale_game(game, awale_stored, &nb_awale_stored);
+                           // create an awale stored
+                           //  put awale in the awale stored
+                           // AwaleStoredGame* stored_game = store_awale_game(game, awale_stored, &nb_awale_stored);
 
                            client.user->state = FREE;
                            opponent_user->state = FREE;
-
                         }
                         else
                         {
@@ -279,6 +272,22 @@ static void app(void)
                            write_client(opponent_client->sock, buffer);
                         }
                      }
+                  }
+                  else if (!strcmp(token, "withdraw"))
+                  {
+                     AwaleRunningGame *game = find_awale_running(client.user, awale_running, nb_awale_running);
+                     game->winner = (client.user == game->player0) ? 1 : 0;
+                     User *opponent_user = (game->player0 != client.user) ? game->player0 : game->player1;
+                     Client *opponent_client = find_client(clients, nb_clients, opponent_user);
+
+                     write_client(opponent_client->sock, "withdrew");
+
+                     // create an awale stored
+                     //  put awale in the awale stored
+                     // AwaleStoredGame* stored_game = store_awale_game(game, awale_stored, &nb_awale_stored);
+
+                     client.user->state = FREE;
+                     opponent_user->state = FREE;
                   }
                }
                break;
@@ -296,23 +305,23 @@ static void send_game(Client *client, AwaleRunningGame *game)
    int i = 0;
    char message[BUF_SIZE];
    sprintf(message, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
-                             (client->user == game->player0) ? 0 : 1,
-                             game->nbTurns % 2,
-                             game->board[0],
-                             game->board[1],
-                             game->board[2],
-                             game->board[3],
-                             game->board[4],
-                             game->board[5],
-                             game->board[6],
-                             game->board[7],
-                             game->board[8],
-                             game->board[9],
-                             game->board[10],
-                             game->board[11],
-                             game->scores[0],
-                             game->scores[1]);
-   
+           (client->user == game->player0) ? 0 : 1,
+           game->nbTurns % 2,
+           game->board[0],
+           game->board[1],
+           game->board[2],
+           game->board[3],
+           game->board[4],
+           game->board[5],
+           game->board[6],
+           game->board[7],
+           game->board[8],
+           game->board[9],
+           game->board[10],
+           game->board[11],
+           game->scores[0],
+           game->scores[1]);
+
    write_client(client->sock, message);
 }
 
@@ -321,25 +330,24 @@ static void send_winner_game(Client *client, AwaleRunningGame *game)
    int i = 0;
    char message[BUF_SIZE];
    sprintf(message, "game_end:{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
-                                   (client->user == game->player0) ? 0 : 1,
-                                   game->winner,
-                                   game->board[0],
-                                   game->board[1],
-                                   game->board[2],
-                                   game->board[3],
-                                   game->board[4],
-                                   game->board[5],
-                                   game->board[6],
-                                   game->board[7],
-                                   game->board[8],
-                                   game->board[9],
-                                   game->board[10],
-                                   game->board[11],
-                                   game->scores[0],
-                                   game->scores[1]);
-   
-   write_client(client->sock, message);
+           (client->user == game->player0) ? 0 : 1,
+           game->winner,
+           game->board[0],
+           game->board[1],
+           game->board[2],
+           game->board[3],
+           game->board[4],
+           game->board[5],
+           game->board[6],
+           game->board[7],
+           game->board[8],
+           game->board[9],
+           game->board[10],
+           game->board[11],
+           game->scores[0],
+           game->scores[1]);
 
+   write_client(client->sock, message);
 }
 
 static AwaleRunningGame *find_awale_running(User *user, AwaleRunningGame *awale_running, int nb_awale_running)
@@ -354,10 +362,8 @@ static AwaleRunningGame *find_awale_running(User *user, AwaleRunningGame *awale_
    return NULL;
 }
 
-static AwaleStoredGame* store_awale_game(AwaleRunningGame* game, AwaleStoredGame* awale_stored_games, int *nb_awale_stored)
+static AwaleStoredGame *store_awale_game(AwaleRunningGame *game, AwaleStoredGame *awale_stored_games, int *nb_awale_stored)
 {
-   
-
 }
 
 static void print_all_users(User *users, int nb_user)
