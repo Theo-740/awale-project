@@ -4,7 +4,7 @@ EXE = $(EXE_DIR)/$(EXE_NAME)
 
 CC = gcc
 FLAGS = -Wall
-DEBUG_FLAGS = -g -DMAP
+DEBUG_FLAGS = -g -DDEBUG
 DEP_FLAGS = -MT $@ -MMD -MP -MF build/deps/$*.d
 
 SRC = $(wildcard *.c)
@@ -22,10 +22,10 @@ include $(wildcard $(DEP_FILES))
 
 build/obj/%.o : %.c | build/obj
 build/obj/%.o : %.c build/deps/%.d | build/deps build/obj
-	$(CC) -c -o $@ $(DEP_FLAGS) $(CFLAGS) $<
+	$(CC) -c -o $@ $(DEP_FLAGS) $(FLAGS) $<
 
 $(EXE) : $(OBJ)
-	$(CC) -o $@ $(OBJ) $(LFLAGS)
+	$(CC) -o $@ $(OBJ) $(FLAGS) $(LFLAGS)
 
 build :
 	mkdir $@

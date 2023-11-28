@@ -133,7 +133,7 @@ static void app(void)
             }
             strncpy(buffer, c->user->name, BUF_SIZE - 1);
             strncat(buffer, " connected !", BUF_SIZE - strlen(buffer) - 1);
-            //send_message_to_all_clients(clients, *c, nb_clients, users, buffer, 1);
+            // send_message_to_all_clients(clients, *c, nb_clients, users, buffer, 1);
          }
       }
       else
@@ -154,13 +154,11 @@ static void app(void)
                   remove_client(clients, i, &nb_clients, users);
                   strncpy(buffer, client.user->name, BUF_SIZE - 1);
                   strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
-                  //send_message_to_all_clients(clients, client, nb_clients, users, buffer, 1);
+                  // send_message_to_all_clients(clients, client, nb_clients, users, buffer, 1);
                }
                else
                {
                   char *token = strtok(buffer, ":");
-
-                  printf("work before game accepted");
                   if (!strcmp(token, "chat"))
                   {
                      send_message_to_all_clients(clients, client, nb_clients, users, buffer + 5, 0);
@@ -196,11 +194,9 @@ static void app(void)
                   /* accept a challenge */
                   else if (!strcmp(token, "game_accepted"))
                   {
-
-                     printf("work just after game accepted");
                      token = strtok(NULL, "\n");
                      User *opponent_user = find_user(users, nb_users, client.user->challenged);
-                     Client* opponent_client = find_client(clients, nb_clients, opponent_user);
+                     Client *opponent_client = find_client(clients, nb_clients, opponent_user);
 
                      write_client(opponent_client->sock, "game_accepted");
 
@@ -214,8 +210,6 @@ static void app(void)
                      awale_running[nb_awale_running].player0 = (statePlayer1 == WAITING_MOVE) ? opponent_user : clients[i].user;
                      awale_running[nb_awale_running].player1 = (statePlayer1 == WAITING_MOVE) ? clients[i].user : opponent_user;
                      ++nb_awale_running;
-                     printf("new awale created !\n");
-                     // TODO send message with info about the game (don't know what theo did/didn't do)
                   }
                   /*refused challenge*/
                   else if (!strcmp(token, "game_refused"))
@@ -223,12 +217,76 @@ static void app(void)
                      print_all_users(users, nb_users);
                      printf("challenger !\n");
                      User *challenger = find_user(users, nb_users, client.user->challenged);
-                     printf("%p\n", (void*)challenger);
+                     printf("%p\n", (void *)challenger);
 
                      client.user->state = FREE;
                      challenger->state = FREE;
                      printf("write refused\n");
                      write_client(find_client(clients, nb_clients, challenger)->sock, "game_refused");
+                  }
+                  else if (!strcmp(token, "game_state"))
+                  {
+                     AwaleRunningGame *game = find_awale_running(client.user, awale_running, nb_awale_running);
+                     sprintf(buffer, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
+                             (client.user == game->player0) ? 0 : 1,
+                             game->nbTurns % 2,
+                             game->board[0],
+                             game->board[1],
+                             game->board[2],
+                             game->board[3],
+                             game->board[4],
+                             game->board[5],
+                             game->board[6],
+                             game->board[7],
+                             game->board[8],
+                             game->board[9],
+                             game->board[10],
+                             game->board[11],
+                             game->scores[0],
+                             game->scores[1]);
+                     write_client(client.sock, buffer);
+                  }
+                  else if (!strcmp(token, "move"))
+                  {
+                     token = strtok(NULL, "\n");
+                     int move;
+                     sscanf(token, "%d", &move);
+                     AwaleRunningGame *game = find_awale_running(client.user, awale_running, nb_awale_running);
+
+                     if (
+                         client.user->state == PLAYING)
+                     {
+                        if (awale_play_move(game, move) < 0)
+                        {
+                           sprintf(buffer, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}\n",
+                                   (client.user == game->player0) ? 0 : 1,
+                                   game->nbTurns % 2,
+                                   game->board[0],
+                                   game->board[1],
+                                   game->board[2],
+                                   game->board[3],
+                                   game->board[4],
+                                   game->board[5],
+                                   game->board[6],
+                                   game->board[7],
+                                   game->board[8],
+                                   game->board[9],
+                                   game->board[10],
+                                   game->board[11],
+                                   game->scores[0],
+                                   game->scores[1]);
+                           write_client(client.sock, buffer);
+                        }
+                        else
+                        {
+                           User *opponent_user = (game->player0 != client.user) ? game->player0 : game->player1;
+                           Client *opponent_client = find_client(clients, nb_clients, opponent_user);
+                           client.user->state = WAITING_MOVE;
+                           opponent_user->state = PLAYING;
+                           sprintf(buffer, "move:%d", move);
+                           write_client(opponent_client->sock, buffer);
+                        }
+                     }
                   }
                }
                break;
@@ -241,9 +299,21 @@ static void app(void)
    end_connection(sock);
 }
 
-static void print_all_users(User* users, int nb_user)
+static AwaleRunningGame *find_awale_running(User *user, AwaleRunningGame *awale_running, int nb_awale_running)
 {
-   for(int i=0; i<nb_user;++i)
+   for (int i = 0; i < nb_awale_running; ++i)
+   {
+      if (awale_running[i].player0 == user || awale_running[i].player1 == user)
+      {
+         return &awale_running[i];
+      }
+   }
+   return NULL;
+}
+
+static void print_all_users(User *users, int nb_user)
+{
+   for (int i = 0; i < nb_user; ++i)
    {
       printf("%d %s\n", i, users[i].name);
    }
@@ -283,12 +353,10 @@ static User *connect_user(User *users, int *nb_users, char *username)
    if (user == NULL && *nb_users < MAX_USERS)
    {
       user = &users[*nb_users];
-      printf("new user %d\n", *nb_users);
       (*nb_users)++;
       strcpy(user->name, username);
       user->is_connected = 1;
       user->state = 0;
-      printf("nb users %d\n", *nb_users);
    }
    else
    {
@@ -404,9 +472,9 @@ static int read_client(SOCKET sock, char *buffer)
    }
 
    buffer[n] = 0;
-
+#ifdef DEBUG
    printf("sock n°%d says : \"%s\"\n", sock, buffer);
-
+#endif
    return n;
 }
 
@@ -418,7 +486,9 @@ static void write_client(SOCKET sock, const char *buffer)
       exit(errno);
    }
 
+#ifdef DEBUG
    printf("I say : \"%s\"\n", buffer);
+#endif
 }
 
 int main(int argc, char **argv)

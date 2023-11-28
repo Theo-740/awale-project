@@ -54,5 +54,6 @@ static void send_user_list_to_client(Client target, Client *clients, int nb_clie
 static User* connect_user(User *users, int *nb_users, char *username);
 static Client* find_client(Client *clients, int nb_clients, User* user);
 static User* find_user(User *users, int nb_users, char *username);
+static AwaleRunningGame *find_awale_running(User *user, AwaleRunningGame *awale_running, int nb_awale_running);
 
 #endif /* guard */

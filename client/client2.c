@@ -55,7 +55,7 @@ void app(const char *address, const char *name)
    {
       controller_init(&ctrl, sock, buffer, MAIN_MENU);
    }
-   else if (!strncmp(buffer, "challenged", 10)||!strncmp(buffer, "challenging", 11))
+   else if (!strncmp(buffer, "challenged", 10) || !strncmp(buffer, "challenging", 11))
    {
       controller_init(&ctrl, sock, buffer, CHALLENGED);
    }
@@ -164,9 +164,9 @@ int read_server(SOCKET sock, char *buffer)
    }
 
    buffer[n] = 0;
-
+#ifdef DEBUG
    printf("server says : \"%s\"\n", buffer);
-
+#endif
    return n;
 }
 
@@ -177,8 +177,9 @@ void write_server(SOCKET sock, const char *buffer)
       perror("send()");
       exit(errno);
    }
-
+#ifdef DEBUG
    printf("I say : \"%s\"\n", buffer);
+#endif
 }
 
 int main(int argc, char **argv)

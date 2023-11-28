@@ -124,6 +124,7 @@ static void game_enter(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
     c->state = GAME;
     c->game.loaded = 0;
     printf("loading game...\n");
+    write_server(serv_sock, "game_state");
 }
 
 static void game_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
@@ -143,13 +144,14 @@ static void game_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZ
     else
     {
         int move;
-        if (sscanf(buffer, "%d", &move) != 1 || awale_play_move(&c->game, move) < 0)
+        int result;
+        if (sscanf(buffer, "%d", &move) != 1 || (result = awale_play_move(&c->game, move)) < 0)
         {
-            printf("this move is not valid\n");
+            printf("this move is not valid %d\n", result);
         }
         else
         {
-            snprintf(buffer, BUF_SIZE, "move:%d\n", move);
+            snprintf(buffer, BUF_SIZE, "move:%d", move);
             write_server(serv_sock, buffer);
         }
     }
@@ -181,6 +183,7 @@ static void game_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_S
         if (read == 16)
         {
             c->game.loaded = 1;
+            c->game.winner = -1;
             awale_print_game(&c->game);
         }
         else if (read != 0)
@@ -311,7 +314,6 @@ void controller_user_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE
 
 void controller_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SIZE])
 {
-    printf("state : %d\n", c->state);
     if(!strncmp(buffer, "chat:",5)){
         printf("%s\n",buffer);
         return;
@@ -319,7 +321,6 @@ void controller_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SI
     switch (c->state)
     {
     case MAIN_MENU:
-        printf("went to controller server input main menu\n");
         if(!strncmp(buffer,"challenged:",11)){
             new_challenge_server_input(c,serv_sock, buffer);
         }
@@ -329,28 +330,23 @@ void controller_server_input(Controller *c, SOCKET serv_sock, char buffer[BUF_SI
         break;
 
     case GAME:
-        printf("went to controller server input game\n");
         game_server_input(c, serv_sock, buffer);
         break;
 
     case USER_LIST:
-        printf("went to controller server input main user list\n");
         user_list_server_input(c, serv_sock, buffer);
         break;
 
     case CHALLENGED:
         if(!strncmp(buffer,"game_refused",12)){
-            printf("went to controller server input challenge refused\n");
             main_menu_enter(c,serv_sock,buffer);
         }
         else if(!strncmp(buffer,"game_accepted",13)){
-            printf("went to controller server input challenge accepted\n");
             game_enter(c,serv_sock,buffer);
         }
         break;
 
     default :
-        printf("went to controller server input default\n");
         break;
     }
 }
