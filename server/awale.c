@@ -49,7 +49,7 @@ int awale_play_move(AwaleRunningGame *game, int move)
         return basicValidity;
     }
 
-    //moves the beans
+    // moves the beans
     int holeId = move;
     do
     {
@@ -62,18 +62,27 @@ int awale_play_move(AwaleRunningGame *game, int move)
         }
     } while (game->board[move] > 0);
 
-    //captures the beans
+    // captures the beans
     while (
         ((move / (AWALE_BOARD_SIZE / 2)) != game->nbTurns % 2) &&
         (game->board[holeId] > 1) &&
         (game->board[holeId] < 4))
     {
-        game->scores[game->nbTurns%2] += game->board[holeId];
+        game->scores[game->nbTurns % 2] += game->board[holeId];
         game->board[holeId] = 0;
     }
-    
+
     game->moves[game->nbTurns++] = move;
-    //check for end of the game
+
+    // check for end of the game
+    int nb_beans = 0;
+    for( int i = 0; i<AWALE_BOARD_SIZE/2; i++) {
+        nb_beans += game->board[i+(game->nbTurns%2)*AWALE_BOARD_SIZE/2];
+    }
+    if(nb_beans == 0) {
+        game->winner = (game->nbTurns+1)%2;
+        return 1;
+    }
 
     return 0;
 }
