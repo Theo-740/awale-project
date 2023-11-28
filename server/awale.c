@@ -75,12 +75,22 @@ int awale_play_move(AwaleRunningGame *game, int move)
     game->moves[game->nbTurns++] = move;
 
     // check for end of the game
-    int nb_beans = 0;
-    for( int i = 0; i<AWALE_BOARD_SIZE/2; i++) {
-        nb_beans += game->board[i+(game->nbTurns%2)*AWALE_BOARD_SIZE/2];
+    int nb_beans[2] = {0, 0};
+    for (int i = 0; i < AWALE_BOARD_SIZE; i++)
+    {
+        nb_beans[i / (AWALE_BOARD_SIZE / 2)] += game->board[i];
     }
-    if(nb_beans == 0) {
-        game->winner = (game->nbTurns+1)%2;
+    if ((nb_beans[game->nbTurns % 2] == 0) && (nb_beans[0]+nb_beans[1] < AWALE_MIN_BEANS))
+    {
+        game->scores[0] += nb_beans[0];
+        game->scores[1] += nb_beans[1];
+        if(game->scores[0]>game->scores[1]) {
+            game->winner=0;
+        } else if(game->scores[1]>game->scores[0]) {
+            game->winner=1;
+        } else {
+            game->winner=2;
+        }
         return 1;
     }
 
