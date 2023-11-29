@@ -26,8 +26,8 @@ typedef struct Controller
     Username name;
     AwaleGame game;
     int nb_games;
-    int games_list_id[MAX_GAMES];
-    Username games_list_name[2*MAX_GAMES];
+    int game_list_id[MAX_GAMES];
+    Username game_list_name[2*MAX_GAMES];
     int nb_users;
     Username user_list[MAX_USERS];
 } Controller;

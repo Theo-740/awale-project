@@ -8,16 +8,13 @@ static void read_awale_game(Controller *c, char *string)
 {
     c->game.loaded = 0;
 
-    Username player0;
-    Username player1;
+    char *player0;
+    char *player1;
 
-    char *token;
-    if ((token = strtok(string, ",")) == NULL)
+    if ((player0 = strtok(string, ",")) == NULL)
         return;
-    sscanf(token, "%s", player0);
-    if ((token = strtok(NULL, ",")) == NULL)
+    if ((player1 = strtok(NULL, ",")) == NULL)
         return;
-    sscanf(token, "%s", player1);
 
     if (!strcmp(player0, c->name))
     {
@@ -34,26 +31,43 @@ static void read_awale_game(Controller *c, char *string)
         return;
     }
 
-    if ((token = strtok(NULL, ",")) == NULL)
+    char *token;
+    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.scores[0]) != 1)
         return;
-    sscanf(token, "%d", &c->game.scores[0]);
-    if ((token = strtok(NULL, ",")) == NULL)
+    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.scores[1]) != 1)
         return;
-    sscanf(token, "%d", &c->game.scores[1]);
-    if ((token = strtok(NULL, ",")) == NULL)
+    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.nbTurns) != 1)
         return;
-    sscanf(token, "%d", &c->game.nbTurns);
 
     for (int i = 0; i < AWALE_BOARD_SIZE; i++)
     {
-        if ((token = strtok(NULL, ",")) == NULL)
+        if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%hhd", &c->game.board[i]) != 1)
             return;
-        sscanf(token, "%hhd", &c->game.board[i]);
     }
 
     c->game.winner = -1;
 
     c->game.loaded = 1;
+}
+
+static void read_game_list(Controller *c, char *string)
+{
+    c->nb_games = 0;
+    char *token = strtok(string, ",");
+    while (c->nb_games < MAX_GAMES && token != NULL)
+    {
+        if (sscanf(token, "%d", &c->game_list_id[c->nb_games]) != 1)
+            return;
+
+        if ((token = strtok(NULL, ",")) == NULL)
+            return;
+        strcpy(c->game_list_name[c->nb_games * 2], token);
+
+        if ((token = strtok(NULL, ",")) == NULL)
+            return;
+        strcpy(c->game_list_name[c->nb_games * 2 + 1], token);
+        c->nb_games++;
+    }
 }
 
 static void main_menu_enter(Controller *c);
@@ -76,9 +90,9 @@ static void challenging_enter(Controller *c);
 static void challenging_server_input(Controller *c, char *message);
 static void challenging_user_input(Controller *c, char *message);
 
-static void games_list_enter(Controller *c);
-static void games_list_server_input(Controller *c, char *message);
-static void games_list_user_input(Controller *c, char *message);
+static void game_list_enter(Controller *c);
+static void game_list_server_input(Controller *c, char *message);
+static void game_list_user_input(Controller *c, char *message);
 
 // main menu state
 static void main_menu_enter(Controller *c)
@@ -99,7 +113,7 @@ static void main_menu_user_input(Controller *c, char *message)
             break;
 
         case 2:
-            games_list_enter(c);
+            game_list_enter(c);
             break;
 
         default:
@@ -183,7 +197,8 @@ static void game_server_input(Controller *c, char *message)
     if (!strcmp(header, "game_state"))
     {
         read_awale_game(c, content);
-        if(c->game.loaded){
+        if (c->game.loaded)
+        {
             awale_print_game(&c->game);
         }
     }
@@ -241,26 +256,15 @@ static void game_server_input(Controller *c, char *message)
 }
 
 // games list state
-static void games_list_enter(Controller *c)
+static void game_list_enter(Controller *c)
 {
     c->state = GAME_LIST;
-    c->nb_users = 0;
+    c->nb_games = -1;
     printf("loading list...\n");
-    write_server(c->server_sock, "running_games_list;");
+    write_server(c->server_sock, "running_game_list;");
 }
 
-static int member(int *element, Controller *c)
-{
-    for(int i=0; i<(c->nb_games/2);++i)
-    {
-        if((*element) == c->games_list_id[i])
-        {
-            return 1;
-        }
-    }
-    return 0;
-}
-static void games_list_user_input(Controller *c, char *input)
+static void game_list_user_input(Controller *c, char *input)
 {
     if (input[0] == 'q')
     {
@@ -268,24 +272,20 @@ static void games_list_user_input(Controller *c, char *input)
         main_menu_enter(c);
         return;
     }
-    if (c->nb_games == 0)
+    if (c->nb_games == -1)
     {
         printf("wait! the list is still loading\n");
-        write_server(c->server_sock, "running_games_list;");
+        write_server(c->server_sock, "running_game_list;");
     }
     else
     {
         int id;
-        if (sscanf(input, "%d", &id) == 1 && member(&id,c))
+        if (sscanf(input, "%d", &id) == 1 && id >= 0 && id < c->nb_games)
         {
             char buffer[BUF_SIZE];
-            char tmp[10];
-            sprintf(tmp,"%d", id);
-            strncpy(buffer, "running_games_list:", BUF_SIZE - 1);
-            strncat(buffer, tmp, BUF_SIZE - strlen(buffer) - 1);
-            strncat(buffer, ";", BUF_SIZE - strlen(buffer) - 1);
+            snprintf(buffer, BUF_SIZE, "observe_game:%d", c->game_list_id[id]);
             write_server(c->server_sock, buffer);
-            //observer_enter(c);
+            // observer_enter(c);
         }
         else
         {
@@ -294,40 +294,30 @@ static void games_list_user_input(Controller *c, char *input)
     }
 }
 
-static void games_list_server_input(Controller *c, char *message)
+static void game_list_server_input(Controller *c, char *message)
 {
-    char *header = strtok(message, ":");
-    if (!strcmp(header, "running_games_list"))
+    char *content;
+    char *header = strtok_r(message, ":", &content);
+    if (!strcmp(header, "running_game_list"))
     {
-        char *game = strtok(NULL, ":");
-        while (game != NULL && c->nb_games < MAX_USERS)
+        read_game_list(c, content);
+        if (c->nb_games != -1)
         {
-            c->games_list_id[c->nb_games/2] = atoi(message);
-            //sscanf(message, "%d", &c->games_list_id[c->nb_games/2]);
-            game = strtok(NULL,"-");
-            strncpy(c->games_list_name[c->nb_games], game, USERNAME_LENGTH - 1);
-            c->games_list_name[c->nb_games][USERNAME_LENGTH - 1] = '\0';
-            c->nb_games++;
-            game = strtok(NULL, ",");
-            strncpy(c->games_list_name[c->nb_games], game, USERNAME_LENGTH - 1);
-            c->games_list_name[c->nb_games][USERNAME_LENGTH - 1] = '\0';
-            c->nb_games++;
-            game = strtok(NULL, ":");
-        }
-        printf("Games Running:\n Insert a number to observe the corresponding game \n");
-        for (int i = 0; i < c->nb_games; i= i+2)
-        {
-            printf("%d:%s-%s\n", c->games_list_id[i], c->games_list_name[i], c->games_list_name[i+1]);
+            printf("Games Running:\n");
+            for (int i = 0; i < c->nb_games; i++)
+            {
+                printf("%d:%s-%s\n", i, c->game_list_name[2 * i], c->game_list_name[2 * i + 1]);
+            }
+            printf("Enter a number to observe the corresponding game \n");
         }
     }
 }
-
 
 // user list state
 static void user_list_enter(Controller *c)
 {
     c->state = USER_LIST;
-    c->nb_users = 0;
+    c->nb_users = -1;
     printf("loading list...\n");
     write_server(c->server_sock, "user_list;");
 }
@@ -340,7 +330,7 @@ static void user_list_user_input(Controller *c, char *input)
         main_menu_enter(c);
         return;
     }
-    if (c->nb_users == 0)
+    if (c->nb_users == -1)
     {
         printf("wait! the list is still loading\n");
         write_server(c->server_sock, "user_list;");
@@ -370,6 +360,7 @@ static void user_list_server_input(Controller *c, char *message)
     char *header = strtok(message, ":");
     if (!strcmp(header, "user_list"))
     {
+        c->nb_users = 0;
         char *user = strtok(NULL, ",");
         while (user != NULL && c->nb_users < MAX_USERS)
         {
@@ -378,11 +369,12 @@ static void user_list_server_input(Controller *c, char *message)
             c->nb_users++;
             user = strtok(NULL, ",");
         }
-        printf("Connected Users:\n Insert a number to challenge the corresponding user \n");
+        printf("Connected Users:\n");
         for (int i = 0; i < c->nb_users; i++)
         {
             printf("%d:%s\n", i, c->user_list[i]);
         }
+        printf("Enter a number to challenge the corresponding user \n");
     }
     else if (!strcmp(header, "challenged"))
     {
@@ -557,9 +549,9 @@ void controller_user_input(Controller *c, char *message)
     case CHALLENGING:
         challenging_user_input(c, message);
         break;
-    
+
     case GAME_LIST:
-        games_list_user_input(c, message);
+        game_list_user_input(c, message);
         break;
 
     case TERMINATED:
@@ -603,7 +595,7 @@ void controller_server_input(Controller *c, char *message)
         break;
 
     case GAME_LIST:
-        games_list_server_input(c, message);
+        game_list_server_input(c, message);
         break;
 
     case TERMINATED:
