@@ -4,6 +4,58 @@
 #include <stdio.h>
 #include <string.h>
 
+static void read_awale_game(Controller *c, char *string)
+{
+    c->game.loaded = 0;
+
+    Username player0;
+    Username player1;
+
+    char *token;
+    if ((token = strtok(string, ",")) == NULL)
+        return;
+    sscanf(token, "%s", player0);
+    if ((token = strtok(NULL, ",")) == NULL)
+        return;
+    sscanf(token, "%s", player1);
+
+    if (!strcmp(player0, c->name))
+    {
+        c->game.id = 0;
+        strcpy(c->game.opponent, player1);
+    }
+    else if (!strcmp(player1, c->name))
+    {
+        c->game.id = 1;
+        strcpy(c->game.opponent, player0);
+    }
+    else
+    {
+        return;
+    }
+
+    if ((token = strtok(NULL, ",")) == NULL)
+        return;
+    sscanf(token, "%d", &c->game.scores[0]);
+    if ((token = strtok(NULL, ",")) == NULL)
+        return;
+    sscanf(token, "%d", &c->game.scores[1]);
+    if ((token = strtok(NULL, ",")) == NULL)
+        return;
+    sscanf(token, "%d", &c->game.nbTurns);
+
+    for (int i = 0; i < AWALE_BOARD_SIZE; i++)
+    {
+        if ((token = strtok(NULL, ",")) == NULL)
+            return;
+        sscanf(token, "%hhd", &c->game.board[i]);
+    }
+
+    c->game.winner = -1;
+
+    c->game.loaded = 1;
+}
+
 static void main_menu_enter(Controller *c);
 static void main_menu_user_input(Controller *c, char *message);
 static void main_menu_server_input(Controller *c, char *message);
@@ -118,42 +170,19 @@ static void game_user_input(Controller *c, char *input)
 
 static void game_server_input(Controller *c, char *message)
 {
-    if (!strncmp(message, "game_state:", 11))
+    char *content;
+    char *header = strtok_r(message, ":", &content);
+    if (!strcmp(header, "game_state"))
     {
-        int read = sscanf(
-            message,
-            "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}",
-            &c->game.id,
-            &c->game.nbTurns,
-            &c->game.board[0],
-            &c->game.board[1],
-            &c->game.board[2],
-            &c->game.board[3],
-            &c->game.board[4],
-            &c->game.board[5],
-            &c->game.board[6],
-            &c->game.board[7],
-            &c->game.board[8],
-            &c->game.board[9],
-            &c->game.board[10],
-            &c->game.board[11],
-            &c->game.scores[0],
-            &c->game.scores[1]);
-        if (read == 16)
-        {
-            c->game.loaded = 1;
-            c->game.winner = -1;
+        read_awale_game(c, content);
+        if(c->game.loaded){
             awale_print_game(&c->game);
         }
-        else if (read != 0)
-        {
-            c->game.loaded = 0;
-        }
     }
-    else if (!strncmp(message, "move:", 5))
+    else if (strcmp(header, "move"))
     {
         int move;
-        if (c->game.nbTurns % 2 != c->game.id && sscanf(message, "move:%d", &move) == 1)
+        if (c->game.nbTurns % 2 != c->game.id && sscanf(content, "%d", &move) == 1)
         {
             awale_play_move(&c->game, move);
             awale_print_game(&c->game);
@@ -163,17 +192,17 @@ static void game_server_input(Controller *c, char *message)
             c->game.loaded = 0;
         }
     }
-    else if (!strcmp(message, "withdrew"))
+    else if (!strcmp(header, "withdrew"))
     {
         printf("opponent withdrew\nyou won!\n");
         main_menu_enter(c);
         return;
     }
-    else if (!strncmp(message, "game_end", 8))
+    else if (!strncmp(header, "game_end", 8))
     {
         sscanf(
-            message,
-            "game_end:{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}",
+            content,
+            "{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}",
             &c->game.id,
             &c->game.winner,
             &c->game.board[0],
@@ -370,6 +399,7 @@ void controller_init(Controller *c, SOCKET server_sock, const char *username)
 {
     char buffer[BUF_SIZE];
     c->server_sock = server_sock;
+    strcpy(c->name, username);
     /* send our name */
     write_server(server_sock, username);
 

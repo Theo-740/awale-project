@@ -21,6 +21,7 @@ typedef struct Controller
 {
     ControllerState state;
     SOCKET server_sock;
+    Username name;
     AwaleGame game;
     int nb_users;
     Username user_list[MAX_USERS];

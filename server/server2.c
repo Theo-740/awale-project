@@ -448,23 +448,20 @@ static void cancel_challenge(Client *client)
 static void send_game(Client *client, RunningGame *game)
 {
    char message[BUF_SIZE];
-   sprintf(message, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d};",
-           (client->user == game->player0) ? 0 : 1,
-           game->awale.infos.nbTurns,
-           game->awale.board[0],
-           game->awale.board[1],
-           game->awale.board[2],
-           game->awale.board[3],
-           game->awale.board[4],
-           game->awale.board[5],
-           game->awale.board[6],
-           game->awale.board[7],
-           game->awale.board[8],
-           game->awale.board[9],
-           game->awale.board[10],
-           game->awale.board[11],
-           game->awale.infos.scores[0],
-           game->awale.infos.scores[1]);
+   char hole[BUF_SIZE];
+   snprintf(message,
+            BUF_SIZE - 1,
+            "game_state:%s,%s,%d,%d,%d",
+            game->player0->name,
+            game->player1->name,
+            game->awale.infos.scores[0],
+            game->awale.infos.scores[1],
+            game->awale.infos.nbTurns);
+   for(int i = 0; i < AWALE_BOARD_SIZE; i++) {
+      snprintf(hole, BUF_SIZE-1, ",%d", game->awale.board[i]);
+      strncat(message, hole, BUF_SIZE - strlen(message)-1);
+   }
+   strncat(message, ";", BUF_SIZE - strlen(message)-1);
 
    write_client(client->sock, message);
 }
