@@ -76,11 +76,15 @@ static void challenging_enter(Controller *c);
 static void challenging_server_input(Controller *c, char *message);
 static void challenging_user_input(Controller *c, char *message);
 
+static void games_list_enter(Controller *c);
+static void games_list_server_input(Controller *c, char *message);
+static void games_list_user_input(Controller *c, char *message);
+
 // main menu state
 static void main_menu_enter(Controller *c)
 {
     c->state = MAIN_MENU;
-    printf("main menu:\n1:Connected users list\n");
+    printf("main menu:\n1:Connected users list\n2:Games running \n");
 }
 
 static void main_menu_user_input(Controller *c, char *message)
@@ -92,6 +96,10 @@ static void main_menu_user_input(Controller *c, char *message)
         {
         case 1:
             user_list_enter(c);
+            break;
+
+        case 2:
+            games_list_enter(c);
             break;
 
         default:
@@ -232,6 +240,87 @@ static void game_server_input(Controller *c, char *message)
     }
 }
 
+// games list state
+static void games_list_enter(Controller *c)
+{
+    c->state = GAME_LIST;
+    c->nb_users = 0;
+    printf("loading list...\n");
+    write_server(c->server_sock, "running_games_list;");
+}
+
+static int member(int *element, Controller *c)
+{
+    for(int i=0; i<(c->nb_games/2);++i)
+    {
+        if((*element) == c->games_list_id[i])
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+static void games_list_user_input(Controller *c, char *input)
+{
+    if (input[0] == 'q')
+    {
+        printf("back to main menu\n");
+        main_menu_enter(c);
+        return;
+    }
+    if (c->nb_users == 0)
+    {
+        printf("wait! the list is still loading\n");
+        write_server(c->server_sock, "running_games_list;");
+    }
+    else
+    {
+        int id;
+        if (sscanf(input, "%d", &id) == 1 && member(&id,c))
+        {
+            char buffer[BUF_SIZE];
+            strncpy(buffer, "running_games_list:", BUF_SIZE - 1);
+            strncat(buffer, id, BUF_SIZE - strlen(buffer) - 1);
+            strncat(buffer, ";", BUF_SIZE - strlen(buffer) - 1);
+            write_server(c->server_sock, buffer);
+            //observer_enter(c);
+        }
+        else
+        {
+            printf("please enter a valid number\n");
+        }
+    }
+}
+
+static void games_list_server_input(Controller *c, char *message)
+{
+    char *header = strtok(message, ":");
+    if (!strcmp(header, "running_games_list"))
+    {
+        char *game = strtok(NULL, ":");
+        while (game != NULL && c->nb_games < MAX_USERS)
+        {
+            c->games_list_id[c->nb_games/2] = atoi(message);
+            //sscanf(message, "%d", &c->games_list_id[c->nb_games/2]);
+            game = strtok(NULL,"-");
+            strcpy(c->games_list_name[c->nb_games], game, USERNAME_LENGTH - 1);
+            c->games_list_name[c->nb_games][USERNAME_LENGTH - 1] = '\0';
+            c->nb_users++;
+            game = strtok(NULL, ",");
+            strncpy(c->games_list_name[c->nb_games], game, USERNAME_LENGTH - 1);
+            c->games_list_name[c->nb_games][USERNAME_LENGTH - 1] = '\0';
+            c->nb_users++;
+            game = strtok(NULL, ":");
+        }
+        printf("Games Running:\n Insert a number to observe the corresponding game \n");
+        for (int i = 0; i < c->nb_users; i= i+2)
+        {
+            printf("%d:%s-%s\n", c->games_list_id[i], c->games_list_name[i], c->games_list_name[i+1]);
+        }
+    }
+}
+
+
 // user list state
 static void user_list_enter(Controller *c)
 {
@@ -287,7 +376,7 @@ static void user_list_server_input(Controller *c, char *message)
             c->nb_users++;
             user = strtok(NULL, ",");
         }
-        printf("Connected Users:\n");
+        printf("Connected Users:\n Insert a number to challenge the corresponding user \n");
         for (int i = 0; i < c->nb_users; i++)
         {
             printf("%d:%s\n", i, c->user_list[i]);
@@ -466,6 +555,10 @@ void controller_user_input(Controller *c, char *message)
     case CHALLENGING:
         challenging_user_input(c, message);
         break;
+    
+    case GAME_LIST:
+        games_list_user_input(c, message);
+        break;
 
     case TERMINATED:
         break;
@@ -505,6 +598,10 @@ void controller_server_input(Controller *c, char *message)
 
     case CHALLENGING:
         challenging_server_input(c, message);
+        break;
+
+    case GAME_LIST:
+        games_list_server_input(c, message);
         break;
 
     case TERMINATED:

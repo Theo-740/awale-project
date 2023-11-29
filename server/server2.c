@@ -135,7 +135,10 @@ static void app(void)
                      /* show running game list */
                      else if (!strcmp(header, "running_games_list"))
                      {
-                        send_user_list_running_games(client);
+#ifdef DEBUG
+   printf("went in running games list\n");
+#endif
+                        send_list_running_games(client);
                      }
                      /* challenge a user if didn't already asked someone */
                      else if (!strcmp(header, "challenge") && client->user->state == 0)
@@ -403,6 +406,10 @@ static void accept_challenge(Client *client)
    // create new awale running
    RunningGame *game = &running_games[nb_running_games];
    awale_init_game(&game->awale);
+   game->id = nb_running_games + nb_stored_games;
+#ifdef DEBUG
+   printf("%d\n", game->id);
+#endif
    game->player0 = first_player;
    game->player1 = second_player;
    game->observers[0] = client;
@@ -573,6 +580,7 @@ static RunningGame *find_running_game_by_observer(Client *client)
 static StoredGame *store_game(RunningGame *game)
 {
    StoredGame *stored = &stored_games[nb_stored_games++];
+   stored->id = game->id;
    stored->player0 = game->player0;
    stored->player1 = game->player1;
    memcpy(&stored->awale, &game->awale.infos, sizeof(AwaleGameInfos));
@@ -719,16 +727,38 @@ static void send_user_list_to_client(Client *target)
    write_client(target->sock, message);
 }
 
-static void send_user_list_running_games(Client *target)
+static void send_list_running_games(Client *target)
 {
    char message[BUF_SIZE];
    strncpy(message, "running_games_list:", BUF_SIZE - 1);
-   for (int i = 0; i <= nb_running_games; ++i)
+   if(running_games == NULL)
    {
-      strncat(message, running_games[i].player0->name, sizeof message - strlen(message) - 1);
-      strncat(message, ":", sizeof message - strlen(message) - 1);
-      strncat(message, running_games[i].player1->name, sizeof message - strlen(message) - 1);
-      strncat(message, ",", sizeof message - strlen(message) - 1);
+      return;
+   }
+   for (int i = 0; i < (nb_running_games); ++i)
+   {
+#ifdef DEBUG
+   printf("%d\n", running_games[i].id);
+#endif
+      char buffer[10];
+      sprintf(buffer,"%d",running_games[i].id);
+      strcat(message, buffer);
+      strcat(message, ":");
+
+#ifdef DEBUG
+   printf("%s after first\n", message);
+#endif
+      strcat(message, running_games[i].player0->name);
+      strcat(message, "-");
+
+#ifdef DEBUG
+   printf("%d \n", running_games[i].id);
+#endif
+      strcat(message, running_games[i].player1->name);
+      strcat(message, ",");
+#ifdef DEBUG
+   printf("dans le running game fin\n");
+#endif
    }
    message[strlen(message) - 1] = ';';
    write_client(target->sock, message);

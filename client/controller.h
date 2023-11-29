@@ -6,6 +6,7 @@
 #include "user.h"
 
 #define MAX_USERS 16
+#define MAX_GAMES 16
 
 typedef enum ControllerState
 {
@@ -15,6 +16,7 @@ typedef enum ControllerState
     USER_LIST,
     CHALLENGED,
     CHALLENGING,
+    GAME_LIST,
 } ControllerState;
 
 typedef struct Controller
@@ -23,6 +25,9 @@ typedef struct Controller
     SOCKET server_sock;
     Username name;
     AwaleGame game;
+    int nb_games;
+    int games_list_id[MAX_GAMES];
+    Username games_list_name[2*MAX_GAMES];
     int nb_users;
     Username user_list[MAX_USERS];
 } Controller;
