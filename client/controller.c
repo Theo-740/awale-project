@@ -268,7 +268,7 @@ static void games_list_user_input(Controller *c, char *input)
         main_menu_enter(c);
         return;
     }
-    if (c->nb_users == 0)
+    if (c->nb_games == 0)
     {
         printf("wait! the list is still loading\n");
         write_server(c->server_sock, "running_games_list;");
@@ -279,8 +279,10 @@ static void games_list_user_input(Controller *c, char *input)
         if (sscanf(input, "%d", &id) == 1 && member(&id,c))
         {
             char buffer[BUF_SIZE];
+            char tmp[10];
+            sprintf(tmp,"%d", id);
             strncpy(buffer, "running_games_list:", BUF_SIZE - 1);
-            strncat(buffer, id, BUF_SIZE - strlen(buffer) - 1);
+            strncat(buffer, tmp, BUF_SIZE - strlen(buffer) - 1);
             strncat(buffer, ";", BUF_SIZE - strlen(buffer) - 1);
             write_server(c->server_sock, buffer);
             //observer_enter(c);
@@ -303,17 +305,17 @@ static void games_list_server_input(Controller *c, char *message)
             c->games_list_id[c->nb_games/2] = atoi(message);
             //sscanf(message, "%d", &c->games_list_id[c->nb_games/2]);
             game = strtok(NULL,"-");
-            strcpy(c->games_list_name[c->nb_games], game, USERNAME_LENGTH - 1);
+            strncpy(c->games_list_name[c->nb_games], game, USERNAME_LENGTH - 1);
             c->games_list_name[c->nb_games][USERNAME_LENGTH - 1] = '\0';
-            c->nb_users++;
+            c->nb_games++;
             game = strtok(NULL, ",");
             strncpy(c->games_list_name[c->nb_games], game, USERNAME_LENGTH - 1);
             c->games_list_name[c->nb_games][USERNAME_LENGTH - 1] = '\0';
-            c->nb_users++;
+            c->nb_games++;
             game = strtok(NULL, ":");
         }
         printf("Games Running:\n Insert a number to observe the corresponding game \n");
-        for (int i = 0; i < c->nb_users; i= i+2)
+        for (int i = 0; i < c->nb_games; i= i+2)
         {
             printf("%d:%s-%s\n", c->games_list_id[i], c->games_list_name[i], c->games_list_name[i+1]);
         }
