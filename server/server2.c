@@ -169,7 +169,7 @@ static void app(void)
                         opponent_user->state = FREE;
                         // create an awale stored
                         //  put awale in the awale stored
-                        // AwaleStoredGame* stored_game = store_game(game, awale_stored, &nb_stored_games);
+                        //store_game(game);
                      }
                   }
                }
@@ -568,6 +568,11 @@ static StoredGame *store_game(RunningGame *game)
    stored->player0 = game->player0;
    stored->player1 = game->player1;
    memcpy(&stored->awale, &game->awale.infos, sizeof(AwaleGameInfos));
+
+   /* we remove the game in the array */
+   memmove(game, game + 1, (nb_running_games - 1) * sizeof(RunningGame) - (game - running_games));
+   /* number game running - 1 */
+   nb_running_games--;
    return stored;
 }
 
