@@ -719,7 +719,6 @@ static void send_user_list_to_client(Client *target)
 
 static void send_user_list_running_games(Client *target)
 {
-   int i = 0;
    char message[BUF_SIZE];
    strncpy(message, "running_games_list:", BUF_SIZE - 1);
    for(int i=0; i<=nb_running_games; ++i)
