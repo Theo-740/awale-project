@@ -126,6 +126,11 @@ static void app(void)
                      {
                         send_user_list_to_client(client);
                      }
+                     /* show running game list */
+                     else if (!strcmp(header,"running_games_list"))
+                     {
+                        send_user_list_running_games(client);
+                     }
                      /* challenge a user if didn't already asked someone */
                      else if (!strcmp(header, "challenge") && client->user->state == 0)
                      {
@@ -706,6 +711,23 @@ static void send_user_list_to_client(Client *target)
          strncat(message, clients[i].user->name, sizeof message - strlen(message) - 1);
          strncat(message, ",", sizeof message - strlen(message) - 1);
       }
+   }
+   message[strlen(message)-1]= ';';
+   write_client(target->sock, message);
+}
+
+
+static void send_user_list_running_games(Client *target)
+{
+   int i = 0;
+   char message[BUF_SIZE];
+   strncpy(message, "running_games_list:", BUF_SIZE - 1);
+   for(int i=0; i<=nb_running_games; ++i)
+   {
+      strncat(message, running_games[i].player0->name, sizeof message - strlen(message) - 1);
+      strncat(message, ":", sizeof message - strlen(message) - 1);
+      strncat(message, running_games[i].player1->name, sizeof message - strlen(message) - 1);
+      strncat(message, ",", sizeof message - strlen(message) - 1);
    }
    message[strlen(message)-1]= ';';
    write_client(target->sock, message);

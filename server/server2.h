@@ -99,5 +99,6 @@ static void remove_client(Client *client);
 
 static void send_chat_message_to_all_clients(Client *source, const char *buffer, char from_server);
 static void send_user_list_to_client(Client *target);
+static void send_user_list_running_games(Client *target);
 
 #endif /* guard */
