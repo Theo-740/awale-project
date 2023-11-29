@@ -4,6 +4,7 @@
 #ifdef WIN32
 
 #include <winsock2.h>
+#include <windows.h>
 
 // #elif defined (linux)
 #else
@@ -43,22 +44,23 @@ typedef struct in_addr IN_ADDR;
 #include "awale.h"
 #include "user.h"
 
-typedef struct RunningGame {
+typedef struct RunningGame
+{
     int id;
-    User* player0;
-    User* player1;
+    User *player0;
+    User *player1;
     int nb_observers;
-    Client * observers[MAX_OBSERVERS];
+    Client *observers[MAX_OBSERVERS];
     AwaleGame awale;
 } RunningGame;
 
-typedef struct StoredGame {
+typedef struct StoredGame
+{
     int id;
-    User* player0;
-    User* player1;
+    User *player0;
+    User *player1;
     AwaleGameInfos awale;
 } StoredGame;
-
 
 static void init(void);
 static void end(void);
@@ -70,9 +72,9 @@ static int read_client(SOCKET sock, char *buffer);
 static void write_client(SOCKET sock, const char *buffer);
 
 static void connect_client(SOCKET sock, int *max_fd, fd_set *rdfs);
-static void disconnect_client(Client * client);
+static void disconnect_client(Client *client);
 
-static void challenge_user(Client * challenger, const char* username);
+static void challenge_user(Client *challenger, const char *username);
 static void accept_challenge(Client *client);
 static void refuse_challenge(Client *client);
 static void cancel_challenge(Client *client);
@@ -92,8 +94,8 @@ static Client *find_client(const User *user);
 static User *find_user(const char *username);
 static User *connect_user(const char *username);
 
-static void add_observer(RunningGame* game, Client * observer);
-static void remove_observer(RunningGame* game, Client * observer);
+static void add_observer(RunningGame *game, Client *observer);
+static void remove_observer(RunningGame *game, Client *observer);
 
 static void clear_clients();
 

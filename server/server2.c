@@ -46,6 +46,9 @@ static void app(void)
    printf("debug mode activated\n");
 #endif
    SOCKET sock = init_connection();
+#ifdef DEBUG
+   printf("opened socket n°%d\n", sock);
+#endif
    int max_fd = sock;
    char buffer[BUF_SIZE];
 
@@ -135,9 +138,6 @@ static void app(void)
                      /* show running game list */
                      else if (!strcmp(header, "running_game_list"))
                      {
-#ifdef DEBUG
-                        printf("went in running games list\n");
-#endif
                         send_list_running_games(client);
                      }
                      /* challenge a user if didn't already asked someone */
@@ -230,6 +230,9 @@ static int init_connection(void)
 static void end_connection(int sock)
 {
    closesocket(sock);
+#ifdef DEBUG
+   printf("closed socket n°%d\n", sock);
+#endif
 }
 
 static int read_client(SOCKET sock, char *buffer)
@@ -259,7 +262,7 @@ static void write_client(SOCKET sock, const char *buffer)
    }
 
 #ifdef DEBUG
-   printf("I say : \"%s\"\n", buffer);
+   printf("I say to sock n°%d : \"%s\"\n", sock, buffer);
 #endif
 }
 
@@ -274,6 +277,9 @@ static void connect_client(SOCKET sock, int *max_fd, fd_set *rdfs)
       perror("accept()");
       return;
    }
+#ifdef DEBUG
+   printf("opened socket n°%d\n", csock);
+#endif
 
    /* after connecting the client sends its name */
    if (read_client(csock, buffer) == -1)
@@ -286,6 +292,9 @@ static void connect_client(SOCKET sock, int *max_fd, fd_set *rdfs)
    {
       write_client(csock, "nope;");
       closesocket(csock);
+#ifdef DEBUG
+      printf("closed socket n°%d\n", csock);
+#endif
    }
    else
    {
@@ -341,6 +350,9 @@ static void disconnect_client(Client *client)
       remove_observer(find_running_game_by_observer(client), client);
    }
    closesocket(client->sock);
+#ifdef DEBUG
+   printf("closed socket n°%d\n", client->sock);
+#endif
    remove_client(client);
 
    /*strncpy(buffer, disconnected_user->name, BUF_SIZE - 1);
@@ -677,6 +689,9 @@ static void clear_clients()
    for (i = 0; i < nb_clients; i++)
    {
       closesocket(clients[i].sock);
+#ifdef DEBUG
+      printf("closed socket n°%d\n", clients[i].sock);
+#endif
    }
 }
 
@@ -735,7 +750,7 @@ static void send_list_running_games(Client *target)
    for (int i = 0; i < nb_running_games; ++i)
    {
       char string_game_id[BUF_SIZE];
-      snprintf(string_game_id, BUF_SIZE,"%d,", running_games[i].id);
+      snprintf(string_game_id, BUF_SIZE, "%d,", running_games[i].id);
       strncat(message, string_game_id, BUF_SIZE - strlen(message) - 1);
       strncat(message, running_games[i].player0->name, BUF_SIZE - strlen(message) - 1);
       strncat(message, ",", BUF_SIZE - strlen(message) - 1);
