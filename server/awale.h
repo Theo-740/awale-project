@@ -40,6 +40,7 @@ int awale_move_is_valid(AwaleGame *game, int move);
  * return 0 if game is still running
  * return 1 if game is over by famine
  * return 2 if game is over by indetermination
+ * return 3 if game is over because player owns majority of beans
  * return is negative -> move NOK & game not changed
  * see awaleMoveIsValid for error code
  */

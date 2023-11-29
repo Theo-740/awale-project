@@ -30,6 +30,10 @@ void end(void)
 
 void app(const char *address, const char *name)
 {
+   printf("client starting...\n");
+#ifdef DEBUG
+   printf("debug mode activated\n");
+#endif
    SOCKET sock = init_connection(address);
    char buffer[BUF_SIZE];
    Controller ctrl;

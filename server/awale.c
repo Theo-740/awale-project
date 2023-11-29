@@ -1,6 +1,6 @@
 #include "awale.h"
 
-void compute_winner(AwaleGame *game)
+static void compute_winner(AwaleGame *game)
 {
     if (game->infos.scores[0] > game->infos.scores[1])
     {
@@ -80,12 +80,13 @@ int awale_play_move(AwaleGame *game, int move)
 
     // captures the beans
     while (
-        ((move / (AWALE_BOARD_SIZE / 2)) != game->infos.nbTurns % 2) &&
+        ((holeId / (AWALE_BOARD_SIZE / 2)) != game->infos.nbTurns % 2) &&
         (game->board[holeId] > 1) &&
         (game->board[holeId] < 4))
     {
         game->infos.scores[game->infos.nbTurns % 2] += game->board[holeId];
         game->board[holeId] = 0;
+        holeId--;
     }
 
     game->infos.moves[game->infos.nbTurns++] = move;
@@ -102,6 +103,11 @@ int awale_play_move(AwaleGame *game, int move)
         game->infos.scores[1] += nb_beans[1];
         compute_winner(game);
         return 1;
+    }
+    if (game->infos.scores[(game->infos.nbTurns - 1) % 2] > (game->infos.scores[game->infos.nbTurns % 2] + nb_beans[0] + nb_beans[1]))
+    {
+        compute_winner(game);
+        return 3;
     }
     if (game->infos.nbTurns == AWALE_MAX_TURNS)
     {

@@ -84,7 +84,7 @@ static void game_user_input(Controller *c, char *input)
         main_menu_enter(c);
         return;
     }
-    else if (c->game.turn != c->game.id)
+    else if (c->game.nbTurns % 2 != c->game.id)
     {
         printf("it's not your turn!!!\n wait for your opponent's move\n");
     }
@@ -124,7 +124,7 @@ static void game_server_input(Controller *c, char *message)
             message,
             "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}",
             &c->game.id,
-            &c->game.turn,
+            &c->game.nbTurns,
             &c->game.board[0],
             &c->game.board[1],
             &c->game.board[2],
@@ -153,7 +153,7 @@ static void game_server_input(Controller *c, char *message)
     else if (!strncmp(message, "move:", 5))
     {
         int move;
-        if (c->game.turn != c->game.id && sscanf(message, "move:%d", &move) == 1)
+        if (c->game.nbTurns % 2 != c->game.id && sscanf(message, "move:%d", &move) == 1)
         {
             awale_play_move(&c->game, move);
             awale_print_game(&c->game);
@@ -247,22 +247,29 @@ static void user_list_user_input(Controller *c, char *input)
 
 static void user_list_server_input(Controller *c, char *message)
 {
-    char *token = strtok(message, ":");
-    if (!strcmp(token, "user_list"))
+    char *header = strtok(message, ":");
+    if (!strcmp(header, "user_list"))
     {
-        token = strtok(NULL, ",");
-        while (token != NULL && c->nb_users < MAX_USERS)
+        char *user = strtok(NULL, ",");
+        while (user != NULL && c->nb_users < MAX_USERS)
         {
-            strncpy(c->user_list[c->nb_users], token, USERNAME_LENGTH - 1);
+            strncpy(c->user_list[c->nb_users], user, USERNAME_LENGTH - 1);
             c->user_list[c->nb_users][USERNAME_LENGTH - 1] = '\0';
             c->nb_users++;
-            token = strtok(NULL, ",");
+            user = strtok(NULL, ",");
         }
         printf("Connected Users:\n");
         for (int i = 0; i < c->nb_users; i++)
         {
             printf("%d:%s\n", i, c->user_list[i]);
         }
+    }
+    else if (!strcmp(header, "challenged"))
+    {
+        char *username = strtok(NULL, ";");
+        strcpy(c->user_list[0], username);
+        challenged_enter(c);
+        return;
     }
 }
 
@@ -338,6 +345,14 @@ static void challenging_server_input(Controller *c, char *message)
     {
         printf("the challenge wad refused\n");
         main_menu_enter(c);
+        return;
+    }
+    else if (!strcmp(header, "challenged"))
+    {
+        printf("the challenge wad refused\n");
+        char *username = strtok(NULL, ";");
+        strcpy(c->user_list[0], username);
+        challenged_enter(c);
         return;
     }
 }

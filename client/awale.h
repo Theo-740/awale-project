@@ -4,24 +4,26 @@
 #include "user.h"
 
 #define AWALE_BOARD_SIZE 12
+#define AWALE_MIN_BEANS 3
+#define AWALE_MAX_TURNS 100
 
-typedef unsigned char awale_board[AWALE_BOARD_SIZE];
+typedef unsigned char AwaleBoard[AWALE_BOARD_SIZE];
 
 
-typedef struct awale_game
+typedef struct AwaleGame
 {
     int loaded;
-    awale_board board;
+    AwaleBoard board;
     int scores[2];
     int id; // my id in the game (am i the zero or first player ?)
-    int turn;
+    int nbTurns;
     Username opponent;
     /**
      * -1 if game still running
      * 0 or 1 to designate winner
     */
     int winner;
-} awale_game;
+} AwaleGame;
 
 /**
  * return 0 if move is OK
@@ -31,7 +33,7 @@ typedef struct awale_game
  * return -3 if move on wrong size of the board
  * return -4 if hole is empty
  */
-int awale_move_is_valid(awale_game* game, int move);
+int awale_move_is_valid(AwaleGame* game, int move);
 
 /**
  * update the game to play
@@ -39,11 +41,12 @@ int awale_move_is_valid(awale_game* game, int move);
  * return 0 if game is still running
  * return 1 if game is over by famine
  * return 2 if game is over by indetermination
+ * return 3 if game is over because player owns majority of beans
  * return is negative -> move NOK & game not changed
  * see awaleMoveIsValid for error code
  */
-int awale_play_move(awale_game* game, int move);
+int awale_play_move(AwaleGame* game, int move);
 
-void awale_print_game(awale_game* game);
+void awale_print_game(AwaleGame* game);
 
 #endif

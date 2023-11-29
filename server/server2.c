@@ -41,6 +41,10 @@ static int nb_stored_games;
 
 static void app(void)
 {
+   printf("server starting...\n");
+#ifdef DEBUG
+   printf("debug mode activated\n");
+#endif
    SOCKET sock = init_connection();
    int max_fd = sock;
    char buffer[BUF_SIZE];
@@ -52,6 +56,8 @@ static void app(void)
    /* an array for all clients */
 
    fd_set rdfs;
+
+   printf("server ready!\n");
 
    while (1)
    {
@@ -127,7 +133,7 @@ static void app(void)
                         send_user_list_to_client(client);
                      }
                      /* show running game list */
-                     else if (!strcmp(header,"running_games_list"))
+                     else if (!strcmp(header, "running_games_list"))
                      {
                         send_user_list_running_games(client);
                      }
@@ -174,7 +180,7 @@ static void app(void)
                         opponent_user->state = FREE;
                         // create an awale stored
                         //  put awale in the awale stored
-                        //store_game(game);
+                        // store_game(game);
                      }
                   }
                }
@@ -444,7 +450,7 @@ static void send_game(Client *client, RunningGame *game)
    char message[BUF_SIZE];
    sprintf(message, "game_state:{you:%d,turn:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d};",
            (client->user == game->player0) ? 0 : 1,
-           game->awale.infos.nbTurns % 2,
+           game->awale.infos.nbTurns,
            game->awale.board[0],
            game->awale.board[1],
            game->awale.board[2],
@@ -712,23 +718,22 @@ static void send_user_list_to_client(Client *target)
          strncat(message, ",", sizeof message - strlen(message) - 1);
       }
    }
-   message[strlen(message)-1]= ';';
+   message[strlen(message) - 1] = ';';
    write_client(target->sock, message);
 }
-
 
 static void send_user_list_running_games(Client *target)
 {
    char message[BUF_SIZE];
    strncpy(message, "running_games_list:", BUF_SIZE - 1);
-   for(int i=0; i<=nb_running_games; ++i)
+   for (int i = 0; i <= nb_running_games; ++i)
    {
       strncat(message, running_games[i].player0->name, sizeof message - strlen(message) - 1);
       strncat(message, ":", sizeof message - strlen(message) - 1);
       strncat(message, running_games[i].player1->name, sizeof message - strlen(message) - 1);
       strncat(message, ",", sizeof message - strlen(message) - 1);
    }
-   message[strlen(message)-1]= ';';
+   message[strlen(message) - 1] = ';';
    write_client(target->sock, message);
 }
 
