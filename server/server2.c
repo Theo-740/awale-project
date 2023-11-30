@@ -179,9 +179,10 @@ static void app(void)
                         {
                            write_client(opponent_client->sock, "withdrew;");
                         }
-                        for(int i=0; i<game->nb_observers;++i)
+                        for (int i = 0; i < game->nb_observers; ++i)
                         {
-                           write_client(game->observers[i]->sock, "withdrew;");
+                           Client *observer = find_client(game->observers[i]);
+                           write_client(observer->sock, "withdrew;");
                         }
 
                         client->user->state = FREE;
@@ -190,16 +191,16 @@ static void app(void)
                         //  put awale in the awale stored
                         // store_game(game);
                      }
-                     else if(!strcmp(header, "observe_game"))
+                     else if (!strcmp(header, "observe_game"))
                      {
                         int id = atoi(content);
                         RunningGame *game = find_running_game_by_id(id);
-                        add_observer(game,client);
+                        add_observer(game, client);
                      }
-                     else if(!strcmp(header, "observer_end"))
+                     else if (!strcmp(header, "observer_end"))
                      {
                         RunningGame *game = find_running_game_by_observer(client);
-                        remove_observer(game,client);
+                        remove_observer(game, client);
                      }
                   }
                }
@@ -437,9 +438,7 @@ static void accept_challenge(Client *client)
    game->id = nb_running_games + nb_stored_games;
    game->player0 = first_player;
    game->player1 = second_player;
-   /*game->observers[0] = client;
-   game->observers[1] = opponent_client;
-   game->nb_observers = 2;*/
+   game->nb_observers = 0;
    nb_running_games++;
 }
 
@@ -551,17 +550,18 @@ static void make_move(Client *client, const char *move_description)
       /* game over */
       if (result > 0)
       {
-         if(client->user->is_connected)
+         if (client->user->is_connected)
          {
             send_winner_game(client, game);
          }
-         if(opponent_client != NULL)
+         if (opponent_client != NULL)
          {
             send_winner_game(opponent_client, game);
          }
          for (int i = 0; i < game->nb_observers; i++)
          {
-            send_winner_game(game->observers[i], game);
+            Client *observer = find_client(game->observers[i]);
+            send_winner_game(observer, game);
          }
 
          store_game(game);
@@ -574,16 +574,16 @@ static void make_move(Client *client, const char *move_description)
          client->user->state = WAITING_MOVE;
          opponent_user->state = PLAYING;
          sprintf(buffer, "move:%d;", move);
-         if(opponent_client != NULL)
+         printf("sending move %d\n", move);
+         if (opponent_client != NULL)
          {
             write_client(opponent_client->sock, buffer);
          }
+         printf("sending move %d\n", move);
          for (int i = 0; i < game->nb_observers; i++)
          {
-            if (game->observers[i] != client)
-            {
-               write_client(game->observers[i]->sock, buffer);
-            }
+            Client *observer = find_client(game->observers[i]);
+            write_client(observer->sock, buffer);
          }
       }
    }
@@ -608,7 +608,7 @@ static RunningGame *find_running_game_by_observer(Client *client)
       RunningGame *game = &running_games[i];
       for (int j = 0; j < game->nb_observers; j++)
       {
-         if (game->observers[j] == client)
+         if (game->observers[j] == client->user)
          {
             return game;
          }
@@ -617,18 +617,16 @@ static RunningGame *find_running_game_by_observer(Client *client)
    return NULL;
 }
 
-
 static RunningGame *find_running_game_by_id(int id)
 {
    for (int i = 0; i < nb_running_games; ++i)
    {
       RunningGame *game = &running_games[i];
-      
+
       if (running_games[i].id == id)
       {
          return game;
       }
-      
    }
    return NULL;
 }
@@ -708,41 +706,25 @@ static User *connect_user(const char *username)
 
 static void add_observer(RunningGame *game, Client *observer)
 {
-   if (game->nb_observers == MAX_OBSERVERS)
+   if (game == NULL || game->nb_observers == MAX_OBSERVERS)
    {
       write_client(observer->sock, "observe_end;");
       return;
    }
-   game->observers[game->nb_observers++] = observer;
+   game->observers[game->nb_observers++] = observer->user;
 
-   char message[BUF_SIZE];
-   char hole[BUF_SIZE];
-   snprintf(message,
-            BUF_SIZE - 1,
-            "game_state:%s,%s,%d,%d,%d",
-            game->player0->name,
-            game->player1->name,
-            game->awale.infos.scores[0],
-            game->awale.infos.scores[1],
-            game->awale.infos.nbTurns);
-   for (int i = 0; i < AWALE_BOARD_SIZE; i++)
-   {
-      snprintf(hole, BUF_SIZE - 1, ",%d", game->awale.board[i]);
-      strncat(message, hole, BUF_SIZE - strlen(message) - 1);
-   }
-   strncat(message, ";", BUF_SIZE - strlen(message) - 1);
-
-   write_client(observer->sock, message);
+   send_game(observer, game);
 }
 
 static void remove_observer(RunningGame *game, Client *observer)
 {
    for (int i = 0; i < game->nb_observers; i++)
    {
-      if (game->observers[i]->user->name == observer->user->name)
+      if (game->observers[i] == observer->user)
       {
-         memmove(observer, observer+1, (game->nb_observers - 1) * sizeof(Client) - (observer-*(game->observers)));
+         memmove(&game->observers[i], &game->observers[i + 1], (game->nb_observers - i - 1));
          game->nb_observers--;
+         return;
       }
    }
 }
@@ -809,7 +791,7 @@ static void send_user_list_to_client(Client *target)
 
 static void send_list_running_games(Client *target)
 {
-   if(target->user->state != FREE)
+   if (target->user->state != FREE)
    {
       return;
    }

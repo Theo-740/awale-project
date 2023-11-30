@@ -50,7 +50,7 @@ typedef struct RunningGame
     User *player0;
     User *player1;
     int nb_observers;
-    Client *observers[MAX_OBSERVERS];
+    User *observers[MAX_OBSERVERS];
     AwaleGame awale;
 } RunningGame;
 
