@@ -86,6 +86,7 @@ static void make_move(Client *client, const char *move_description);
 
 static RunningGame *find_running_game_by_player(User *user);
 static RunningGame *find_running_game_by_observer(Client *client);
+static RunningGame *find_running_game_by_id(int id);
 static StoredGame *store_game(RunningGame *game);
 
 static void print_all_users();

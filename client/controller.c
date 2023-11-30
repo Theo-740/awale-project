@@ -15,20 +15,22 @@ static void read_awale_game(Controller *c, char *string)
         return;
     if ((player1 = strtok(NULL, ",")) == NULL)
         return;
-
-    if (!strcmp(player0, c->name))
+    if(c->state == GAME)
     {
-        c->game.id = 0;
-        strcpy(c->game.opponent, player1);
-    }
-    else if (!strcmp(player1, c->name))
-    {
-        c->game.id = 1;
-        strcpy(c->game.opponent, player0);
-    }
-    else
-    {
-        return;
+        if (!strcmp(player0, c->name))
+        {
+            c->game.id = 0;
+            strcpy(c->game.opponent, player1);
+        }
+        else if (!strcmp(player1, c->name))
+        {
+            c->game.id = 1;
+            strcpy(c->game.opponent, player0);
+        }
+        else
+        {
+            return;
+        }
     }
 
     char *token;
@@ -93,6 +95,10 @@ static void challenging_user_input(Controller *c, char *message);
 static void game_list_enter(Controller *c);
 static void game_list_server_input(Controller *c, char *message);
 static void game_list_user_input(Controller *c, char *message);
+
+static void observer_enter(Controller *c);
+static void observer_server_input(Controller *c, char *message);
+static void observer_user_input(Controller *c, char *message);
 
 // main menu state
 static void main_menu_enter(Controller *c)
@@ -202,7 +208,7 @@ static void game_server_input(Controller *c, char *message)
             awale_print_game(&c->game);
         }
     }
-    else if (strcmp(header, "move"))
+    else if (!strcmp(header, "move"))
     {
         int move;
         if (c->game.nbTurns % 2 != c->game.id && sscanf(content, "%d", &move) == 1)
@@ -251,7 +257,7 @@ static void game_server_input(Controller *c, char *message)
 
     if (!c->game.loaded)
     {
-        write_server(c->server_sock, "game state;");
+        write_server(c->server_sock, "game_state;");
     }
 }
 
@@ -263,6 +269,7 @@ static void game_list_enter(Controller *c)
     printf("loading list...\n");
     write_server(c->server_sock, "running_game_list;");
 }
+
 
 static void game_list_user_input(Controller *c, char *input)
 {
@@ -285,7 +292,7 @@ static void game_list_user_input(Controller *c, char *input)
             char buffer[BUF_SIZE];
             snprintf(buffer, BUF_SIZE, "observe_game:%d", c->game_list_id[id]);
             write_server(c->server_sock, buffer);
-            // observer_enter(c);
+            observer_enter(c);
         }
         else
         {
@@ -476,6 +483,90 @@ static void challenging_user_input(Controller *c, char *input)
     main_menu_enter(c);
 }
 
+// observer state
+static void observer_enter(Controller *c)
+{
+    c->state = OBSERVER;
+    printf("waiting to observe...\n");
+}
+
+static void observer_server_input(Controller *c, char *message)
+{
+    char *content;
+    char *header = strtok_r(message, ":", &content);
+    if(!strcmp(header,"observe_end"))
+    {
+        printf("this game can't be observed\nback to main menu\n");
+        main_menu_enter(c);
+    }
+    if (!strcmp(header, "game_state"))
+    {
+        printf("Here is the game state of the running game\n");
+        read_awale_game(c, content);
+        if (c->game.loaded)
+        {
+            awale_print_game_observe(&c->game);
+        }
+        printf("\n");
+    }
+    else if (!strcmp(header, "move"))
+    {
+        int move;
+        if (c->game.nbTurns % 2 != c->game.id && sscanf(content, "%d", &move) == 1)
+        {
+            printf("New action !\n");
+            awale_play_move(&c->game, move);
+            awale_print_game_observe(&c->game);
+            printf("\n");
+        }
+        else
+        {
+            c->game.loaded = 0;
+        }
+    }
+    else if (!strcmp(header, "withdrew"))
+    {
+        printf("one of the player has withdrew\nback to main menu\n");
+        main_menu_enter(c);
+        return;
+    }
+    else if (!strncmp(header, "game_end", 8))
+    {
+        sscanf(
+            content,
+            "{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}",
+            &c->game.id,
+            &c->game.winner,
+            &c->game.board[0],
+            &c->game.board[1],
+            &c->game.board[2],
+            &c->game.board[3],
+            &c->game.board[4],
+            &c->game.board[5],
+            &c->game.board[6],
+            &c->game.board[7],
+            &c->game.board[8],
+            &c->game.board[9],
+            &c->game.board[10],
+            &c->game.board[11],
+            &c->game.scores[0],
+            &c->game.scores[1]);
+
+        awale_print_game_observe(&c->game);
+
+        main_menu_enter(c);
+        return;
+    }
+
+}
+
+static void observer_user_input(Controller *c, char *message)
+{
+    write_server(c->server_sock, "observer_end;");
+    printf("you canceled the observer\nback to main menu\n");
+    main_menu_enter(c);
+}
+
 // Controller main functions
 
 void controller_init(Controller *c, SOCKET server_sock, const char *username)
@@ -554,6 +645,10 @@ void controller_user_input(Controller *c, char *message)
         game_list_user_input(c, message);
         break;
 
+    case OBSERVER:
+        observer_user_input(c,message);
+        break;
+
     case TERMINATED:
         break;
     }
@@ -596,6 +691,10 @@ void controller_server_input(Controller *c, char *message)
 
     case GAME_LIST:
         game_list_server_input(c, message);
+        break;
+
+    case OBSERVER:
+        observer_server_input(c,message);
         break;
 
     case TERMINATED:

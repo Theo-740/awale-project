@@ -48,5 +48,6 @@ int awale_move_is_valid(AwaleGame* game, int move);
 int awale_play_move(AwaleGame* game, int move);
 
 void awale_print_game(AwaleGame* game);
+void awale_print_game_observe(AwaleGame *game);
 
 #endif

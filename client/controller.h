@@ -17,6 +17,7 @@ typedef enum ControllerState
     CHALLENGED,
     CHALLENGING,
     GAME_LIST,
+    OBSERVER,
 } ControllerState;
 
 typedef struct Controller

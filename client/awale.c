@@ -196,3 +196,76 @@ void awale_print_game(AwaleGame *game)
         }
     }
 }
+
+void awale_print_game_observe(AwaleGame *game)
+{
+    if (game->id == 0)
+    {
+        int i = AWALE_BOARD_SIZE - 1;
+        printf("%hhd", game->board[i--]);
+        while (i >= AWALE_BOARD_SIZE / 2)
+        {
+            printf("|%hhd", game->board[i--]);
+        }
+        printf("     score:%d\n", game->scores[1]);
+        for (i = 0; i < AWALE_BOARD_SIZE / 2 - 1; i++)
+        {
+            printf("-+");
+        }
+        printf("-\n");
+        i = 0;
+        printf("%hhd", game->board[i++]);
+        while (i < AWALE_BOARD_SIZE / 2)
+        {
+            printf("|%hhd", game->board[i++]);
+        }
+        printf("     score:%d\n", game->scores[0]);
+    }
+    else
+    {
+        int i = AWALE_BOARD_SIZE / 2 - 1;
+        printf("%hhd", game->board[i--]);
+        while (i >= 0)
+        {
+            printf("|%hhd", game->board[i--]);
+        }
+        printf("     score:%d\n", game->scores[1]);
+        for (i = 0; i < AWALE_BOARD_SIZE / 2 - 1; i++)
+        {
+            printf("-+");
+        }
+        printf("-\n");
+        i = AWALE_BOARD_SIZE / 2;
+        printf("%hhd", game->board[i++]);
+        while (i < AWALE_BOARD_SIZE)
+        {
+            printf("|%hhd", game->board[i++]);
+        }
+        printf("     score:%d\n", game->scores[0]);
+    }
+    if (game->winner == -1)
+    {
+        if (game->nbTurns % 2 == game->id)
+        {
+            for (int i = 0; i < AWALE_BOARD_SIZE / 2; i++)
+            {
+                printf("^ ");
+            }
+            printf("\n");
+            for (int i = 0; i < AWALE_BOARD_SIZE / 2; i++)
+            {
+                printf("| ");
+            }
+            printf("\n");
+            for (int i = 0; i < AWALE_BOARD_SIZE / 2; i++)
+            {
+                printf("%d ", i);
+            }
+            printf("\n");
+        }
+    }
+    else
+    {
+        printf("end of game ! Thanks for looking\n");
+    }
+}
