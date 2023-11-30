@@ -109,12 +109,6 @@ static void app(void)
                /* client disconnected */
                if (c == 0)
                {
-                  
-                  RunningGame *game = find_running_game_by_observer(client);
-                  if(game != NULL)
-                  {
-                  remove_observer(game,client);
-                  }
                   disconnect_client(client);
                }
                else
@@ -202,7 +196,7 @@ static void app(void)
                         RunningGame *game = find_running_game_by_id(id);
                         add_observer(game,client);
                      }
-                     else if(!strcmp(header, "observe_end"))
+                     else if(!strcmp(header, "observer_end"))
                      {
                         RunningGame *game = find_running_game_by_observer(client);
                         remove_observer(game,client);
@@ -745,9 +739,9 @@ static void remove_observer(RunningGame *game, Client *observer)
 {
    for (int i = 0; i < game->nb_observers; i++)
    {
-      if (game->observers[i] == observer)
+      if (game->observers[i]->user->name == observer->user->name)
       {
-         memmove(&game->observers[i], &game->observers[i]+1, (game->nb_observers - i - 1) * sizeof(Client));
+         memmove(observer, observer+1, (game->nb_observers - 1) * sizeof(Client) - (observer-*(game->observers)));
          game->nb_observers--;
       }
    }
