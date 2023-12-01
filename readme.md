@@ -1,3 +1,5 @@
+# Théo GAIGE et Ambre HUTIER groupe 1
+
 # Fonctionnalités implémentées :
 - partie d'awale 1 vs 1 (abandon possible)
 - reconnection à une partie en cours en cas de déconnexion de l'utilisateur
