@@ -387,7 +387,16 @@ static void challenge_user(Client *challenger, const char *username)
    User *challenged_user = find_user(username);
    if (challenged_user != NULL && challenged_user->is_connected && challenged_user->state == FREE)
    {
+      
       Client *challenged_client = find_client(challenged_user);
+      RunningGame *game = find_running_game_by_observer(challenged_client);
+      if(game!= NULL)
+      {
+         remove_observer(game, challenged_client);
+         write_client(challenged_client->sock, "observer_end");
+
+      }
+
       strncpy(buffer, "challenged:", BUF_SIZE - 1);
       strncat(buffer, challenger->user->name, BUF_SIZE - strlen(buffer) - 1);
       strncat(buffer, ";", BUF_SIZE - strlen(buffer) - 1);
@@ -574,12 +583,10 @@ static void make_move(Client *client, const char *move_description)
          client->user->state = WAITING_MOVE;
          opponent_user->state = PLAYING;
          sprintf(buffer, "move:%d;", move);
-         printf("sending move %d\n", move);
          if (opponent_client != NULL)
          {
             write_client(opponent_client->sock, buffer);
          }
-         printf("sending move %d\n", move);
          for (int i = 0; i < game->nb_observers; i++)
          {
             Client *observer = find_client(game->observers[i]);
@@ -775,6 +782,7 @@ static void send_user_list_to_client(Client *target)
 {
    int i = 0;
    char message[BUF_SIZE];
+   char tmp[BUF_SIZE];
    strncpy(message, "user_list:", BUF_SIZE - 1);
    for (i = 0; i < nb_clients; i++)
    {
@@ -782,6 +790,9 @@ static void send_user_list_to_client(Client *target)
       if (target != &clients[i])
       {
          strncat(message, clients[i].user->name, sizeof message - strlen(message) - 1);
+         strncat(message, ",", sizeof message - strlen(message) - 1);
+         snprintf(tmp, BUF_SIZE, "%d", clients[i].user->state);
+         strncat(message, tmp, sizeof message - strlen(message) - 1);
          strncat(message, ",", sizeof message - strlen(message) - 1);
       }
    }

@@ -2,7 +2,7 @@
 #define _AWALE_H
 
 #define AWALE_BOARD_SIZE 12
-#define AWALE_NB_BEANS_START 2
+#define AWALE_NB_BEANS_START 4
 #define AWALE_MIN_BEANS 3
 #define AWALE_MAX_TURNS 100
 

@@ -31,6 +31,7 @@ typedef struct Controller
     Username game_list_name[2*MAX_GAMES];
     int nb_users;
     Username user_list[MAX_USERS];
+    int state_list[MAX_USERS];
 } Controller;
 
 void controller_init(Controller *c, SOCKET server_sock, const char *username);

@@ -4,6 +4,39 @@
 #include <stdio.h>
 #include <string.h>
 
+static void read_awale_game(Controller *c, char *string);
+static void read_game_list(Controller *c, char *string);
+static void read_user_list(Controller *c, char *string);
+
+
+static void main_menu_enter(Controller *c);
+static void main_menu_user_input(Controller *c, char *message);
+static void main_menu_server_input(Controller *c, char *message);
+
+static void game_enter(Controller *c);
+static void game_user_input(Controller *c, char *message);
+static void game_server_input(Controller *c, char *message);
+
+static void user_list_enter(Controller *c);
+static void user_list_user_input(Controller *c, char *message);
+static void user_list_server_input(Controller *c, char *message);
+
+static void challenged_enter(Controller *c);
+static void challenged_server_input(Controller *c, char *message);
+static void challenged_user_input(Controller *c, char *message);
+
+static void challenging_enter(Controller *c);
+static void challenging_server_input(Controller *c, char *message);
+static void challenging_user_input(Controller *c, char *message);
+
+static void game_list_enter(Controller *c);
+static void game_list_server_input(Controller *c, char *message);
+static void game_list_user_input(Controller *c, char *message);
+
+static void observer_enter(Controller *c);
+static void observer_server_input(Controller *c, char *message);
+static void observer_user_input(Controller *c, char *message);
+
 static void read_awale_game(Controller *c, char *string)
 {
     c->game.loaded = 0;
@@ -72,39 +105,33 @@ static void read_game_list(Controller *c, char *string)
     }
 }
 
-static void main_menu_enter(Controller *c);
-static void main_menu_user_input(Controller *c, char *message);
-static void main_menu_server_input(Controller *c, char *message);
-
-static void game_enter(Controller *c);
-static void game_user_input(Controller *c, char *message);
-static void game_server_input(Controller *c, char *message);
-
-static void user_list_enter(Controller *c);
-static void user_list_user_input(Controller *c, char *message);
-static void user_list_server_input(Controller *c, char *message);
-
-static void challenged_enter(Controller *c);
-static void challenged_server_input(Controller *c, char *message);
-static void challenged_user_input(Controller *c, char *message);
-
-static void challenging_enter(Controller *c);
-static void challenging_server_input(Controller *c, char *message);
-static void challenging_user_input(Controller *c, char *message);
-
-static void game_list_enter(Controller *c);
-static void game_list_server_input(Controller *c, char *message);
-static void game_list_user_input(Controller *c, char *message);
-
-static void observer_enter(Controller *c);
-static void observer_server_input(Controller *c, char *message);
-static void observer_user_input(Controller *c, char *message);
+static void read_user_list(Controller *c, char *string)
+{
+    int state;
+    c->nb_users = 0;
+    char *token = strtok(string, ",");
+    while (token != NULL && c->nb_users < MAX_USERS)
+    {
+        strncpy(c->user_list[c->nb_users], token, USERNAME_LENGTH - 1);
+        c->user_list[c->nb_users][USERNAME_LENGTH - 1] = '\0';
+        if((token = strtok(NULL, ",")) == NULL){
+            return;
+        }
+        if(sscanf(token, "%d", &state) != 1) 
+        {
+            return;
+        }
+        c->state_list[c->nb_users] = state;
+        c->nb_users++;
+        token = strtok(NULL, ",");
+    }
+}
 
 // main menu state
 static void main_menu_enter(Controller *c)
 {
     c->state = MAIN_MENU;
-    printf("main menu:\n1:Connected users list\n2:Games running \n");
+    printf("\nmain menu:\n1:Connected users list\n2:Games running \n");
 }
 
 static void main_menu_user_input(Controller *c, char *message)
@@ -150,7 +177,7 @@ static void game_enter(Controller *c)
 {
     c->state = GAME;
     c->game.loaded = 0;
-    printf("loading game...\n");
+    printf("\nloading game...\n");
     write_server(c->server_sock, "game_state;");
 }
 
@@ -266,7 +293,7 @@ static void game_list_enter(Controller *c)
 {
     c->state = GAME_LIST;
     c->nb_games = -1;
-    printf("loading list...\n");
+    printf("\nloading list...\n");
     write_server(c->server_sock, "running_game_list;");
 }
 
@@ -310,7 +337,7 @@ static void game_list_server_input(Controller *c, char *message)
         read_game_list(c, content);
         if (c->nb_games != -1)
         {
-            printf("Games Running:\n");
+            printf("\nGames Running:\n");
             for (int i = 0; i < c->nb_games; i++)
             {
                 printf("%d:%s-%s\n", i, c->game_list_name[2 * i], c->game_list_name[2 * i + 1]);
@@ -325,7 +352,7 @@ static void user_list_enter(Controller *c)
 {
     c->state = USER_LIST;
     c->nb_users = -1;
-    printf("loading list...\n");
+    printf("\nloading list...\n");
     write_server(c->server_sock, "user_list;");
 }
 
@@ -364,22 +391,35 @@ static void user_list_user_input(Controller *c, char *input)
 
 static void user_list_server_input(Controller *c, char *message)
 {
-    char *header = strtok(message, ":");
+    char *content;
+    char *header = strtok_r(message, ":", &content);
     if (!strcmp(header, "user_list"))
     {
-        c->nb_users = 0;
-        char *user = strtok(NULL, ",");
-        while (user != NULL && c->nb_users < MAX_USERS)
-        {
-            strncpy(c->user_list[c->nb_users], user, USERNAME_LENGTH - 1);
-            c->user_list[c->nb_users][USERNAME_LENGTH - 1] = '\0';
-            c->nb_users++;
-            user = strtok(NULL, ",");
-        }
-        printf("Connected Users:\n");
+        read_user_list(c, content);
+        printf("\nConnected Users:\n");
         for (int i = 0; i < c->nb_users; i++)
         {
-            printf("%d:%s\n", i, c->user_list[i]);
+            char * state;
+            switch(c->state_list[i]){
+                case 0:
+                    state ="free";
+                    break;
+                
+                case 1:
+                case 2:
+                    state ="playing";
+                    break;
+                
+                case 3:
+                    state ="challenged";
+                    break;
+
+                case 4:
+                    state ="challenging";
+                    break;
+            }
+
+            printf("%d:%s (%s)\n", i, c->user_list[i], state);
         }
         printf("Enter a number to challenge the corresponding user \n");
     }
@@ -396,7 +436,7 @@ static void user_list_server_input(Controller *c, char *message)
 static void challenged_enter(Controller *c)
 {
     c->state = CHALLENGED;
-    printf("%s is challenging you !\n", c->user_list[0]);
+    printf("\n%s is challenging you !\n", c->user_list[0]);
     printf("1: accept the challenge\n");
     printf("2: refuse the challenge\n");
 }
@@ -448,7 +488,7 @@ static void challenged_user_input(Controller *c, char *input)
 static void challenging_enter(Controller *c)
 {
     c->state = CHALLENGING;
-    printf("you challenged %s. To undo this action enter anything\n", c->user_list[0]);
+    printf("\nyou challenged %s. To undo this action enter anything\n", c->user_list[0]);
 }
 
 static void challenging_server_input(Controller *c, char *message)
@@ -487,21 +527,21 @@ static void challenging_user_input(Controller *c, char *input)
 static void observer_enter(Controller *c)
 {
     c->state = OBSERVER;
-    printf("waiting to observe...\n");
+    printf("\nwaiting to observe...\n");
 }
 
 static void observer_server_input(Controller *c, char *message)
 {
     char *content;
     char *header = strtok_r(message, ":", &content);
-    if(!strcmp(header,"observe_end"))
+    if(!strcmp(header,"observer_end"))
     {
-        printf("this game can't be observed\nback to main menu\n");
+        printf("you have been disconnected from the game\nback to main menu\n");
         main_menu_enter(c);
     }
     if (!strcmp(header, "game_state"))
     {
-        printf("Here is the game state of the running game\n");
+        printf("\nHere is the game state of the running game\n");
         read_awale_game(c, content);
         if (c->game.loaded)
         {

@@ -109,7 +109,7 @@ int awale_play_move(AwaleGame *game, int move)
 
 void awale_print_game(AwaleGame *game)
 {
-    printf("opponent: %s\n", game->opponent);
+    printf("\nopponent: %s\n", game->opponent);
     if (game->id == 0)
     {
         int i = AWALE_BOARD_SIZE - 1;

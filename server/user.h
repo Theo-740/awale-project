@@ -8,10 +8,10 @@ typedef char Username[USERNAME_LENGTH];
 typedef enum UserState
 {
     FREE = 0,
-    PLAYING,
-    WAITING_MOVE,
-    CHALLENGED,
-    CHALLENGING
+    PLAYING = 1,
+    WAITING_MOVE = 2,
+    CHALLENGED = 3,
+    CHALLENGING = 4
 }UserState;
 
 struct User
