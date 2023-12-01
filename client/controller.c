@@ -39,50 +39,55 @@ static void observer_user_input(Controller *c, char *message);
 
 static void read_awale_game(Controller *c, char *string)
 {
-    c->game.loaded = 0;
+    c->loaded = 0;
 
     char *player0;
     char *player1;
 
     if ((player0 = strtok(string, ",")) == NULL)
         return;
+    strcpy(c->game.player0, player0);
     if ((player1 = strtok(NULL, ",")) == NULL)
         return;
+    strcpy(c->game.player1, player1);
+
     if(c->state == GAME)
     {
         if (!strcmp(player0, c->name))
         {
-            c->game.id = 0;
-            strcpy(c->game.opponent, player1);
+            c->game.self_id = 0;
         }
         else if (!strcmp(player1, c->name))
         {
-            c->game.id = 1;
-            strcpy(c->game.opponent, player0);
+            c->game.self_id = 1;
         }
         else
         {
             return;
         }
     }
+    else
+    {
+        c->game.self_id = -1;
+    }
 
     char *token;
-    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.scores[0]) != 1)
+    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.awale.infos.scores[0]) != 1)
         return;
-    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.scores[1]) != 1)
+    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.awale.infos.scores[1]) != 1)
         return;
-    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.nbTurns) != 1)
+    if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%d", &c->game.awale.infos.nbTurns) != 1)
         return;
 
     for (int i = 0; i < AWALE_BOARD_SIZE; i++)
     {
-        if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%hhd", &c->game.board[i]) != 1)
+        if ((token = strtok(NULL, ",")) == NULL || sscanf(token, "%hhd", &c->game.awale.board[i]) != 1)
             return;
     }
 
-    c->game.winner = -1;
+    c->game.awale.infos.winner = -1;
 
-    c->game.loaded = 1;
+    c->loaded = 1;
 }
 
 static void read_game_list(Controller *c, char *string)
@@ -102,6 +107,7 @@ static void read_game_list(Controller *c, char *string)
             return;
         strcpy(c->game_list_name[c->nb_games * 2 + 1], token);
         c->nb_games++;
+        token = strtok(NULL, ",");
     }
 }
 
@@ -176,7 +182,7 @@ static void main_menu_server_input(Controller *c, char *message)
 static void game_enter(Controller *c)
 {
     c->state = GAME;
-    c->game.loaded = 0;
+    c->loaded = 0;
     printf("\nloading game...\n");
     write_server(c->server_sock, "game_state;");
 }
@@ -191,7 +197,7 @@ static void game_user_input(Controller *c, char *input)
         main_menu_enter(c);
         return;
     }
-    else if (c->game.nbTurns % 2 != c->game.id)
+    else if (c->game.awale.infos.nbTurns % 2 != c->game.self_id)
     {
         printf("it's not your turn!!!\n wait for your opponent's move\n");
     }
@@ -204,11 +210,11 @@ static void game_user_input(Controller *c, char *input)
         }
         else
         {
-            if (c->game.id == 1)
+            if (c->game.self_id == 1)
             {
                 move += AWALE_BOARD_SIZE / 2;
             }
-            if (awale_play_move(&c->game, move) < 0)
+            if (awale_play_move(&c->game.awale, move) < 0)
             {
                 printf("this move is not valid\n");
             }
@@ -217,7 +223,7 @@ static void game_user_input(Controller *c, char *input)
                 char buffer[BUF_SIZE];
                 snprintf(buffer, BUF_SIZE, "move:%d;", move);
                 write_server(c->server_sock, buffer);
-                awale_print_game(&c->game);
+                awale_print_game(&c->game.awale,c->game.self_id);
             }
         }
     }
@@ -230,22 +236,22 @@ static void game_server_input(Controller *c, char *message)
     if (!strcmp(header, "game_state"))
     {
         read_awale_game(c, content);
-        if (c->game.loaded)
+        if (c->loaded)
         {
-            awale_print_game(&c->game);
+            awale_print_game(&c->game.awale, c->game.self_id);
         }
     }
     else if (!strcmp(header, "move"))
     {
         int move;
-        if (c->game.nbTurns % 2 != c->game.id && sscanf(content, "%d", &move) == 1)
+        if (c->game.awale.infos.nbTurns % 2 != c->game.self_id && sscanf(content, "%d", &move) == 1)
         {
-            awale_play_move(&c->game, move);
-            awale_print_game(&c->game);
+            awale_play_move(&c->game.awale, move);
+            awale_print_game(&c->game.awale, c->game.self_id);
         }
         else
         {
-            c->game.loaded = 0;
+            c->loaded = 0;
         }
     }
     else if (!strcmp(header, "withdrew"))
@@ -254,35 +260,8 @@ static void game_server_input(Controller *c, char *message)
         main_menu_enter(c);
         return;
     }
-    else if (!strncmp(header, "game_end", 8))
-    {
-        sscanf(
-            content,
-            "{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}",
-            &c->game.id,
-            &c->game.winner,
-            &c->game.board[0],
-            &c->game.board[1],
-            &c->game.board[2],
-            &c->game.board[3],
-            &c->game.board[4],
-            &c->game.board[5],
-            &c->game.board[6],
-            &c->game.board[7],
-            &c->game.board[8],
-            &c->game.board[9],
-            &c->game.board[10],
-            &c->game.board[11],
-            &c->game.scores[0],
-            &c->game.scores[1]);
 
-        awale_print_game(&c->game);
-
-        main_menu_enter(c);
-        return;
-    }
-
-    if (!c->game.loaded)
+    if (!c->loaded)
     {
         write_server(c->server_sock, "game_state;");
     }
@@ -541,59 +520,35 @@ static void observer_server_input(Controller *c, char *message)
     }
     if (!strcmp(header, "game_state"))
     {
-        printf("\nHere is the game state of the running game\n");
+        printf("\nHere is the current state of the game\n");
         read_awale_game(c, content);
-        if (c->game.loaded)
+        if (c->loaded)
         {
-            awale_print_game_observe(&c->game);
+            awale_print_game(&c->game.awale, c->game.self_id);
         }
         printf("\n");
     }
     else if (!strcmp(header, "move"))
     {
         int move;
-        if (c->game.nbTurns % 2 != c->game.id && sscanf(content, "%d", &move) == 1)
+        if (sscanf(content, "%d", &move) == 1)
         {
             printf("New action !\n");
-            awale_play_move(&c->game, move);
-            awale_print_game_observe(&c->game);
-            printf("\n");
+            int result = awale_play_move(&c->game.awale, move);
+            awale_print_game(&c->game.awale, c->game.self_id);
+            if(result > 0) {
+                printf("game is over\nback to main menu\n");
+                main_menu_enter(c);
+            }
         }
         else
         {
-            c->game.loaded = 0;
+            c->loaded = 0;
         }
     }
     else if (!strcmp(header, "withdrew"))
     {
         printf("one of the player has withdrew\nback to main menu\n");
-        main_menu_enter(c);
-        return;
-    }
-    else if (!strncmp(header, "game_end", 8))
-    {
-        sscanf(
-            content,
-            "{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d}",
-            &c->game.id,
-            &c->game.winner,
-            &c->game.board[0],
-            &c->game.board[1],
-            &c->game.board[2],
-            &c->game.board[3],
-            &c->game.board[4],
-            &c->game.board[5],
-            &c->game.board[6],
-            &c->game.board[7],
-            &c->game.board[8],
-            &c->game.board[9],
-            &c->game.board[10],
-            &c->game.board[11],
-            &c->game.scores[0],
-            &c->game.scores[1]);
-
-        awale_print_game_observe(&c->game);
-
         main_menu_enter(c);
         return;
     }

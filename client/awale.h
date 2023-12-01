@@ -1,29 +1,28 @@
 #ifndef _AWALE_H
 #define _AWALE_H
 
-#include "user.h"
-
 #define AWALE_BOARD_SIZE 12
+#define AWALE_NB_BEANS_START 4
 #define AWALE_MIN_BEANS 3
 #define AWALE_MAX_TURNS 100
 
 typedef unsigned char AwaleBoard[AWALE_BOARD_SIZE];
 
+typedef struct AwaleGameInfos
+{
+    int scores[2];
+    int nbTurns;
+    int moves[AWALE_MAX_TURNS];
+    int winner;
+} AwaleGameInfos;
 
 typedef struct AwaleGame
 {
-    int loaded;
+    AwaleGameInfos infos;
     AwaleBoard board;
-    int scores[2];
-    int id; // my id in the game (am i the zero or first player ?)
-    int nbTurns;
-    Username opponent;
-    /**
-     * -1 if game still running
-     * 0 or 1 to designate winner
-    */
-    int winner;
 } AwaleGame;
+
+void awale_init_game(AwaleGame *game);
 
 /**
  * return 0 if move is OK
@@ -33,7 +32,7 @@ typedef struct AwaleGame
  * return -3 if move on wrong size of the board
  * return -4 if hole is empty
  */
-int awale_move_is_valid(AwaleGame* game, int move);
+int awale_move_is_valid(AwaleGame *game, int move);
 
 /**
  * update the game to play
@@ -45,9 +44,11 @@ int awale_move_is_valid(AwaleGame* game, int move);
  * return is negative -> move NOK & game not changed
  * see awaleMoveIsValid for error code
  */
-int awale_play_move(AwaleGame* game, int move);
+int awale_play_move(AwaleGame *game, int move);
 
-void awale_print_game(AwaleGame* game);
-void awale_print_game_observe(AwaleGame *game);
+/**
+ * Print the awale given the point of view (player0: 0, player1: 1 or observer: -1)
+*/
+void awale_print_game(AwaleGame *game, int id_pov);
 
 #endif

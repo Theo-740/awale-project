@@ -19,7 +19,7 @@ struct User
     Username name;
     int is_connected;
 
-    struct User* opponent;
+    struct User* opponent; // other user that is challenged by/ is challenging the user
     UserState state;
 } ;
 typedef struct User User;

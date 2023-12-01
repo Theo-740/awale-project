@@ -507,30 +507,6 @@ static void send_game(Client *client, RunningGame *game)
    write_client(client->sock, message);
 }
 
-static void send_winner_game(Client *client, RunningGame *game)
-{
-   char message[BUF_SIZE];
-   sprintf(message, "game_end:{you:%d,winner:%d,board:{%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd,%hhd},scores:{%d,%d};",
-           (client->user == game->player0) ? 0 : 1,
-           game->awale.infos.winner,
-           game->awale.board[0],
-           game->awale.board[1],
-           game->awale.board[2],
-           game->awale.board[3],
-           game->awale.board[4],
-           game->awale.board[5],
-           game->awale.board[6],
-           game->awale.board[7],
-           game->awale.board[8],
-           game->awale.board[9],
-           game->awale.board[10],
-           game->awale.board[11],
-           game->awale.infos.scores[0],
-           game->awale.infos.scores[1]);
-
-   write_client(client->sock, message);
-}
-
 static void make_move(Client *client, const char *move_description)
 {
    char buffer[BUF_SIZE];
@@ -556,42 +532,27 @@ static void make_move(Client *client, const char *move_description)
       User *opponent_user = (game->player0 != client->user) ? game->player0 : game->player1;
       Client *opponent_client = find_client(opponent_user);
 
-      /* game over */
       if (result > 0)
       {
-         if (client->user->is_connected)
-         {
-            send_winner_game(client, game);
-         }
-         if (opponent_client != NULL)
-         {
-            send_winner_game(opponent_client, game);
-         }
-         for (int i = 0; i < game->nb_observers; i++)
-         {
-            Client *observer = find_client(game->observers[i]);
-            send_winner_game(observer, game);
-         }
-
-         store_game(game);
-
+         
          client->user->state = FREE;
          opponent_user->state = FREE;
-      }
+         store_game(game);
+      } 
       else
       {
          client->user->state = WAITING_MOVE;
          opponent_user->state = PLAYING;
-         sprintf(buffer, "move:%d;", move);
-         if (opponent_client != NULL)
-         {
-            write_client(opponent_client->sock, buffer);
-         }
-         for (int i = 0; i < game->nb_observers; i++)
-         {
-            Client *observer = find_client(game->observers[i]);
-            write_client(observer->sock, buffer);
-         }
+      }
+      sprintf(buffer, "move:%d;", move);
+      if (opponent_client != NULL)
+      {
+         write_client(opponent_client->sock, buffer);
+      }
+      for (int i = 0; i < game->nb_observers; i++)
+      {
+         Client *observer = find_client(game->observers[i]);
+         write_client(observer->sock, buffer);
       }
    }
 }
@@ -651,14 +612,6 @@ static StoredGame *store_game(RunningGame *game)
    /* number game running - 1 */
    nb_running_games--;
    return stored;
-}
-
-static void print_all_users()
-{
-   for (int i = 0; i < nb_users; ++i)
-   {
-      printf("%d %s\n", i, users[i].name);
-   }
 }
 
 static Client *find_client(const User *user)

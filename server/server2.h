@@ -54,6 +54,9 @@ typedef struct RunningGame
     AwaleGame awale;
 } RunningGame;
 
+/**
+ * A game that is over 
+*/
 typedef struct StoredGame
 {
     int id;
@@ -74,28 +77,62 @@ static void write_client(SOCKET sock, const char *buffer);
 static void connect_client(SOCKET sock, int *max_fd, fd_set *rdfs);
 static void disconnect_client(Client *client);
 
+/**
+ * Check if the conditions for challenging the user are right
+ * if so, send a challenge message to the challenged user
+*/
 static void challenge_user(Client *challenger, const char *username);
+/**
+ * Accept the challenge and start a game
+ * Notify the challenging player
+*/
 static void accept_challenge(Client *client);
+/**
+ * Refuse the challenge
+ * Notify the challenging player
+*/
 static void refuse_challenge(Client *client);
+/**
+ * Cancel the challenge
+ * Notify the challenger
+*/
 static void cancel_challenge(Client *client);
 
+/**
+ * Send the state of a running game
+*/
 static void send_game(Client *client, RunningGame *game);
-static void send_winner_game(Client *client, RunningGame *game);
-
+/**
+ * Check if the move is valid
+ * If so play the move and notify the other player and observers
+*/
 static void make_move(Client *client, const char *move_description);
 
 static RunningGame *find_running_game_by_player(User *user);
 static RunningGame *find_running_game_by_observer(Client *client);
 static RunningGame *find_running_game_by_id(int id);
+/**
+ * Store the game in the stored games list
+ * Removes it from the running games list
+*/
 static StoredGame *store_game(RunningGame *game);
-
-static void print_all_users();
 
 static Client *find_client(const User *user);
 static User *find_user(const char *username);
+/**
+ * Check if the user name is valid 
+ * if the user exists and is not connected, connect the user
+ * else create a new user
+*/
 static User *connect_user(const char *username);
 
+/**
+ * Add a observer to a game
+*/
 static void add_observer(RunningGame *game, Client *observer);
+/**
+ * Remove observer from a game
+*/
 static void remove_observer(RunningGame *game, Client *observer);
 
 static void clear_clients();
