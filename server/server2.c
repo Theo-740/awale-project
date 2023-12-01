@@ -189,7 +189,7 @@ static void app(void)
                         opponent_user->state = FREE;
                         // create an awale stored
                         //  put awale in the awale stored
-                        // store_game(game);
+                        store_game(game);
                      }
                      else if (!strcmp(header, "observe_game"))
                      {
